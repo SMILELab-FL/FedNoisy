@@ -1,0 +1,10 @@
+PyYAML
+torchnet
+scikit-learn
+seaborn
+scipy
+requests
+prettytable
+matplotlib
+wandb
+fedlab==1.3.0
