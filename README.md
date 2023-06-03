@@ -115,40 +115,36 @@ python build_dataset_fed.py --dataset cifar10 \
 
 
 
-#### Noise hyperparameter
+#### Noise related setting
 
+- Clean: `--globalize --noise_mode clean` for data setting without noise
 - Globalized noise
-  - `--globalize --noise_mode clean` for data setting without noise
   - `--globalize --noise_ratio 0.4 --noise_mode sym` for globalized symmetric noise $\varepsilon_{global}=0.4$
   - `--globalize --noise_ratio 0.4 --noise_mode asym` for globalized asymmetric noise $\varepsilon_{global}=0.4$
-- Localized noise: 
-  - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode sym` for localized symmetric noise $\varepsilon_i \sim \mathcal{U}(0.3, 0.5)$
-  - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode asym` for localized asymmetric noise $\varepsilon_i \sim \mathcal{U}(0.3, 0.5)$
+- Localized noise 
+  - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode sym` for localized symmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
+  - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode asym` for localized asymmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
 
 
 
-#### Dataset partition
+#### Dataset partition setting
 
-- MNIST: set `--dataset mnist`
+- MNIST: `--dataset mnist`
+
+  - IID: `--partition iid --num_clients 10`
+  - Non-IID quantity skew: `--partition noniid-quantity --num_clients 10 --dir_alpha 0.1`
+  - Non-IID Dirichlet-based label skew: `--partition noniid-labeldir --dir_alpha 0.1 --num_clients 10`
+  - Non-IID quantity-based label skew: `--partition noniid-#label --major_classes_num 3 --num_clients 10`
+
+- SVHN: `--dataset svhn`
 
   - 
 
-- SVHN: set `--dataset svhn`
+- CIFAR-10: `--dataset cifar10`
 
   - 
-
-- CIFAR-10: set `--dataset cifar10`
-
-  - Cross-silo
-    - `--partition noniid-quantity --dir_alpha 0.3 --num_clients 10`
-    - `--partition noniid-labeldir --dir_alpha 0.5 --num_clients 10`
-    - `--partition noniid-#label --major_classes_num 3 --num_clients 10`
-  - Cross-device
-    - `--partition noniid-quantity --dir_alpha xxx --num_clients 100`
-    - `--partition noniid-labeldir --dir_alpha xxx --num_clients 100`
-    - `--partition noniid-#label --major_classes_num xxx --num_clients 100`
-
-- CIFAR-100: set `--dataset cifar100`
+  
+- CIFAR-100:  `--dataset cifar100`
 
   - Cross-silo
     - `--partition noniid-quantity --dir_alpha 0.3 --num_clients 20`	
