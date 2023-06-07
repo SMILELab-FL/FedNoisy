@@ -98,6 +98,13 @@ Current supported datasets:
 	</tbody>
 </table>
 
+
+Federated noise scenes provided in $\texttt{FedNoisy}$ is shown as below. (Left: _globalized noise_; middle: _localized noise_; right: _real-word noise_. Globalized noise follows a constant noise ratio $\varepsilon_{global}$ in label corruption, while localized noise draws localized noise ratio $\varepsilon_{k}$ from a uniform distribution on each client $k$.)
+
+<img src="./imgs/pdf/fednoisy-noise-scenes.pdf" height=400px>
+
+
+
 ### Build dataset with noisy labels
 
 The basic command usage is
