@@ -145,22 +145,10 @@ python build_dataset_fed.py --dataset cifar10 \
 
 - SVHN: `--dataset svhn`
 
-  - 
-
 - CIFAR-10: `--dataset cifar10`
 
-  - 
-  
 - CIFAR-100:  `--dataset cifar100`
 
-  - Cross-silo
-    - `--partition noniid-quantity --dir_alpha 0.3 --num_clients 20`	
-    - `--partition noniid-labeldir --dir_alpha 0.5 --num_clients 20`
-    - `--partition noniid-#label --major_classes_num 30 --num_clients 20`
-  - Cross-device
-    - `--partition noniid-quantity --dir_alpha xx --num_clients 100`
-    - `--partition noniid-labeldir --dir_alpha xxx --num_clients 100`
-    - `--partition noniid-#label --major_classes_num xxx --num_clients 100`
 
 
 
