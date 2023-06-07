@@ -20,7 +20,7 @@ $ pip install -r requirements.txt
 
 
 
-## Federated NLL
+## Federated Noisy Labe Settings
 
 Current supported datasets:
 <table>
