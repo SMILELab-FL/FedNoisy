@@ -219,24 +219,109 @@ python build_dataset_fed.py --dataset cifar10 \
 
   - Vanilla FedAvg
 
-  - FedAvg + Symmetric Cross Entropy
-
-  - FedAvg + Dynamic Bootstrapping
-
-  - FedAvg + Mixup
-
-  - FedAvg + Co-teaching
-
     ```bash
-    python fednoisy/algorithms/fedavg/main.py --dataset cifar10 \
-        --model VGG16 \
+    $ python python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
         --partition iid \
         --num_clients 10 \
         --globalize \
         --noise_mode sym \
         --noise_ratio 0.4 \
-        --data_dir ../fedNLLdata/debug/cifar10 \
-        --out_dir ./checkpoint/debug/ \
+        --seed 1 \
+        --sample_ratio 1.0 \
+        --com_round 500 \
+        --epochs 5 \
+        --momentum 0.9 \
+        --lr 0.01 \
+        --weight_decay 0.0005 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/
+    ```
+  
+  - FedAvg + Symmetric Cross Entropy
+  
+    ```bash
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 0.0005 \
+        --criterion sce \
+        --sce_alpha 0.01 \
+        --sce_beta 1.0 \
+        --seed 1
+    ```
+  
+  - FedAvg + DM-DYR-SH
+  
+    ```bash
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 1e-4 \
+        --dynboot \
+        --dynboot_alpha 32 \
+        --dynboot_mixup dynamic \
+        --dynboot_reg 1.0 \
+        --seed 1
+    ```
+  
+  - FedAvg + Mixup
+  
+    ```bash
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 5e-4 \
+        --mixup \
+        --mixup_alpha 1.0 \
+        --seed 1
+    ```
+  
+  - FedAvg + Co-teaching
+  
+    ```bash
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist  \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
         --com_round 500 \
         --epochs 5 \
         --sample_ratio 1.0 \
@@ -248,29 +333,10 @@ python build_dataset_fed.py --dataset cifar10 \
         --coteaching_num_gradual 25 \  # default setting is 10 for 200 epochs, here we set similar ratio with number of global round
         --seed 1
     ```
-
+  
     
 
-
-
-
-## License
-
-```python
-# Copyright 2023 Intelligent Data Analytics (ILLIDAN) Lab (https://illidanlab.github.io/) at Michigan State University and xxxx Lab ([this.is.link.com])
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-```
+For more scripts, please check [scripts](./scripts/) folder.
 
 
 ## References
