@@ -105,12 +105,88 @@ Federated noise scenes provided in $\texttt{FedNoisy}$ is shown as below. (Left:
 
 
 
-### Build dataset with noisy labels
+### Prepare
+
+Raw dataset should be downloaded in to local folder before data-build process. The folder structure can be:
+
+```shell
+.
+├── FedNoisy
+│   ├── LICENSE
+│   ├── README.md
+│   ├── build_dataset_fed.py
+│   ├── fednoisy
+│   ├── imgs
+│   ├── requirements.txt
+│   └── scripts
+├── rawdata
+│   ├── cifar10
+│   │   ├── cifar-10-batches-py
+│   │   └── cifar-10-python.tar.gz
+│   ├── cifar100
+│   │   ├── cifar-100-python
+│   │   └── cifar-100-python.tar.gz
+│   ├── mnist
+│   │   └── MNIST
+│   │       └── raw
+│   │           ├── t10k-images-idx3-ubyte
+│   │           ...
+│   │           └── train-labels-idx1-ubyte.gz
+│   ├── clothing1M/
+│   │   ├── category_names_chn.txt
+│   │   ├── category_names_eng.txt
+│   │   ├── clean_label_kv.txt
+│   │   ├── clean_test_key_list.txt
+│   │   ├── clean_train_key_list.txt
+│   │   ├── clean_val_key_list.txt
+│   │   ├── images
+│   │   │   ├── 0
+│   │   │   ├── 1
+│   │   │   ...
+│   │   │   └── 9
+│   │   ├── noisy_label_kv.txt
+│   │   ├── noisy_train_key_list.txt
+│   │   ├── README.md
+│   │   └── venn.png
+│   └── svhn
+│       ├── extra_32x32.mat
+│       ├── test_32x32.mat
+│       └── train_32x32.mat
+├── fedNLLdata  # to store fedNLL data settings 
+└── Fed-Noisy-checkpoint  # to store algorithm logging output and final models 
+```
+
+- Use `torchvision.dataset` to download of __CIFAR-10__/__CIFAR-100__/__SVHN__/__MNIST__ directly:
+
+  ```python
+  import torchvision
+  
+  mnist_train = torchvision.datasets.MNIST(root="rawdata/mnist", train=True, download=True)
+  mnist_test = torchvision.datasets.MNIST(root="rawdata/mnist", train=False, download=True)
+  
+  cifar10_train = torchvision.datasets.CIFAR10(root="rawdata/cifar10", train=True, download=True)
+  cifar10_test = torchvision.datasets.CIFAR10(root="rawdata/cifar10", train=False, download=True)
+  
+  cifar100_train = torchvision.datasets.CIFAR100(root="rawdata/cifar100", train=True, download=True)
+  cifar100_test = torchvision.datasets.CIFAR100(root="rawdata/cifar100", train=False, download=True)
+  
+  svhn_train = torchvision.datasets.SVHN(root="rawdata/svhn", split="train", download=True)
+  svhn_test = torchvision.datasets.SVHN(root="rawdata/svhn", split="test", download=True)
+  ```
+
+- To download __[Clothing1M](https://github.com/Cysu/noisy_label)__, please contact *tong.xiao.work[at]gmail[dot]com* to get the download link. Untar the images and unzip the annotations under `rawdata/clothing1M`.
+
+
+
+### Build dataset with noisy label
 
 The basic command usage is
 
 ```bash
-python build_dataset_fed.py --dataset cifar10 \
+$ cd FedNoisy 
+
+# under dir FedNoisy/
+$ python build_dataset_fed.py --dataset cifar10 \
      --partition iid \
      --num_clients 10 \
      --globalize \
@@ -125,12 +201,20 @@ python build_dataset_fed.py --dataset cifar10 \
 #### Noise related setting
 
 - Clean: `--globalize --noise_mode clean` for data setting without noise
+
 - Globalized noise
   - `--globalize --noise_ratio 0.4 --noise_mode sym` for globalized symmetric noise $\varepsilon_{global}=0.4$
   - `--globalize --noise_ratio 0.4 --noise_mode asym` for globalized asymmetric noise $\varepsilon_{global}=0.4$
+  
 - Localized noise 
   - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode sym` for localized symmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
   - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode asym` for localized asymmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
+  
+- Real noise (only works for Clothing1M): `--dataset clothing1m --globalize --noise_mode real --num_sampels 64000`
+
+  - `--num_samples` is for specifying number of training samples used for Clothing1M, the default is 64000
+
+  
 
 
 
@@ -148,6 +232,13 @@ python build_dataset_fed.py --dataset cifar10 \
 - CIFAR-10: `--dataset cifar10`
 
 - CIFAR-100:  `--dataset cifar100`
+
+- Clothing1M: `--dataset cloting1m`
+  - IID: `--partition iid --num_clients 10`
+  - Non-IID quantity skew: `--partition noniid-quantity --num_clients 10 --dir_alpha 0.1`
+  - Non-IID Dirichlet-based label skew: `--partition noniid-labeldir --dir_alpha 0.1 --num_clients 10`
+  - Non-IID quantity-based label skew: `--partition noniid-#label --major_classes_num 5 --num_clients 10`
+
 
 
 
@@ -215,6 +306,7 @@ python build_dataset_fed.py --dataset cifar10 \
   - Vanilla FedAvg
 
     ```bash
+    # under dir FedNoisy/
     $ python python fednoisy/algorithms/fedavg/main.py --dataset mnist \
         --model SimpleCNN \
         --partition iid \
@@ -236,6 +328,7 @@ python build_dataset_fed.py --dataset cifar10 \
   - FedAvg + Symmetric Cross Entropy
   
     ```bash
+    # under dir FedNoisy/
     $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
         --model SimpleCNN \
         --partition iid \
@@ -260,6 +353,7 @@ python build_dataset_fed.py --dataset cifar10 \
   - FedAvg + DM-DYR-SH
   
     ```bash
+    # under dir FedNoisy/
     $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
         --model SimpleCNN \
         --partition iid \
@@ -285,6 +379,7 @@ python build_dataset_fed.py --dataset cifar10 \
   - FedAvg + Mixup
   
     ```bash
+    # under dir FedNoisy/
     $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
         --model SimpleCNN \
         --partition iid \
@@ -308,6 +403,7 @@ python build_dataset_fed.py --dataset cifar10 \
   - FedAvg + Co-teaching
   
     ```bash
+    # under dir FedNoisy/
     $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
         --model SimpleCNN \
         --partition iid \
@@ -328,7 +424,7 @@ python build_dataset_fed.py --dataset cifar10 \
         --coteaching_num_gradual 25 \  # default setting is 10 for 200 epochs, here we set similar ratio with number of global round
         --seed 1
     ```
-  
+    
     
 
 For more scripts, please check [scripts](./scripts/) folder.
@@ -346,4 +442,3 @@ For more scripts, please check [scripts](./scripts/) folder.
 
 <a id="5">[5]</a> Li, W., Wang, L., Li, W., Agustsson, E., & Van Gool, L. (2017). Webvision database: Visual learning and understanding from web data. arXiv preprint arXiv:1708.02862.
 
-<a id="6">[6]</a> xxx
