@@ -57,6 +57,7 @@ from fednoisy.data.NLLData.FedNLL import (
     FedNLLCIFAR100,
     FedNLLMNIST,
     FedNLLSVHN,
+    FedNLLClothing1M,
 )
 
 
@@ -106,7 +107,7 @@ def read_args():
         "--noise_mode",
         default=None,
         type=str,
-        choices=["clean", "sym", "asym"],
+        choices=["clean", "sym", "asym", "real"],
         help="Noise type for centralized setting: 'sym' for symmetric noise; "
         "'asym' for asymmetric noise; 'real' for real-world noise. Only works "
         "if --centralized=True.",
@@ -134,6 +135,12 @@ def read_args():
         default=1.0,
         type=float,
         help="Maximum noise ratio for symmetric noise or asymmetric noise. Only works when 'globalize' is Flase",
+    )
+    parser.add_argument(
+        "--num_samples",
+        default=32 * 2 * 1000,
+        type=int,
+        help="Number of samples used for Clothing1M training. Defaults as 64000.",
     )
 
     # ----Dataset path options----
@@ -287,6 +294,19 @@ if __name__ == "__main__":
         )
         nll_svhn.create_nll_scene(seed=args.seed)
         nll_svhn.save_nll_scene()
+
+    elif args.dataset == "clothing1m":
+        nll_clothing1m = FedNLLClothing1M(
+            root_dir=args.raw_data_dir,
+            out_dir=args.data_dir,
+            partition=args.partition,
+            num_clients=args.num_clients,
+            dir_alpha=args.dir_alpha,
+            major_classes_num=args.major_classes_num,
+            num_samples=args.num_samples,
+        )
+        nll_clothing1m.create_nll_scene(seed=args.seed)
+        nll_clothing1m.save_nll_scene()
 
     else:
         raise ValueError(f"dataset='{args.dataset}' is not supported!")

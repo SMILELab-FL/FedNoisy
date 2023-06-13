@@ -1,7 +1,15 @@
 import torchvision.transforms as transforms
 
 # automobile < - truck, bird -> airplane, cat <-> dog, deer -> horse
-# CIFAR10_TRANSITION_MATRIX = {0: 0, 1: 1, 2: 0, 3: 5, 4: 7, 5: 3, 6: 6, 7: 7, 8: 8, 9: 1}
+CIFAR10_TRANSITION_MATRIX = {0: 0, 1: 1, 2: 0, 3: 5, 4: 7, 5: 3, 6: 6, 7: 7, 8: 8, 9: 1}
+
+# TODO: SVHN's transition matrix is a general pair-flip transition matrix
+# TRANSITION_MATRIX = {
+#     "cifar10": {0: 0, 1: 1, 2: 0, 3: 5, 4: 7, 5: 3, 6: 6, 7: 7, 8: 8, 9: 1},
+#     "ciafr100": build_cifar100_transmat(),
+#     "mnist": {0: 0, 1: 1, 2: 7, 3: 8, 4: 4, 5: 6, 6: 5, 7: 1, 8: 8, 9: 9},
+#     "svhn": {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 0},
+# }
 
 
 NORM_VALUES = {
@@ -45,6 +53,15 @@ TRAIN_TRANSFORM = {
             transforms.Normalize(*NORM_VALUES["svhn"]),
         ]
     ),
+    "clothing1m": transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.RandomCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(*NORM_VALUES["clothing1m"]),
+        ]
+    ),
 }
 
 TEST_TRANSFORM = {
@@ -72,12 +89,26 @@ TEST_TRANSFORM = {
             transforms.Normalize(*NORM_VALUES["svhn"]),
         ]
     ),
+    "clothing1m": transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(*NORM_VALUES["clothing1m"]),
+        ]
+    ),
 }
 
 
 TRAIN_SAMPLE_NUM = {"cifar10": 50000, "cifar100": 50000, "mnist": 60000, "svhn": 73257}
 
-TEST_SAMPLE_NUM = {"cifar10": 10000, "cifar100": 10000, "mnist": 10000, "svhn": 26032}
+TEST_SAMPLE_NUM = {
+    "cifar10": 10000,
+    "cifar100": 10000,
+    "mnist": 10000,
+    "svhn": 26032,
+    "clothing1m": 10526,
+}
 
 CLASS_NUM = {
     "cifar10": 10,

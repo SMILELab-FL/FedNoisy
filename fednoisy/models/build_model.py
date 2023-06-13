@@ -5,7 +5,9 @@ from .resnet import ResNet18, ResNet34
 from .preresnet import ResNet18 as PreResNet18
 from .wideresnet import WRN28_10, WRN40_2
 from .vgg import VGG11, VGG13, VGG16, VGG19
+
 from torch import nn
+import torchvision
 
 
 def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"):
@@ -35,12 +37,15 @@ def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"
             )
     elif model_name == "LeNet":
         base_model = LeNet()
-    elif model_name == 'PreResNet18':
+    elif model_name == "PreResNet18":
         base_model = PreResNet18(num_classes)
     elif model_name == "ResNet18":
         base_model = ResNet18(num_classes)
     elif model_name == "ResNet34":
         base_model = ResNet34(num_classes)
+    elif model_name == "ResNet50":
+        base_model = torchvision.models.resnet50(pretrained=True)
+        base_model.fc = nn.Linear(2048, num_classes)
     elif model_name == "ToyModel":
         base_model = ToyModel(type=dataset.upper())
     elif model_name == "WRN28_10":
@@ -107,6 +112,12 @@ def build_multi_model(
         base_model = MultiModel([ResNet18(num_classes) for _ in range(num_models)])
     elif model_name == "ResNet34":
         base_model = MultiModel([ResNet34(num_classes) for _ in range(num_models)])
+    elif model_name == "ResNet50":
+        net1 = torchvision.models.resnet50(pretrained=True)
+        net1.fc = nn.Linear(2048, num_classes)
+        net2 = torchvision.models.resnet50(pretrained=True)
+        net2.fc = nn.Linear(2048, num_classes)
+        base_model = MultiModel([net1, net2])
     elif model_name == "ToyModel":
         base_model = MultiModel(
             [ToyModel(type=dataset.upper()) for _ in range(num_models)]

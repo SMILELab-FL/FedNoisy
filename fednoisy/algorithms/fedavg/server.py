@@ -61,7 +61,7 @@ class FedAvgServerHandler(SyncServerHandler):
 
     def global_update(self, buffer):
         parameters_list = [elem[0] for elem in buffer]
-        weights = [elem[1] / TRAIN_SAMPLE_NUM[self.args.dataset] for elem in buffer]
+        weights = [elem[1] for elem in buffer]
         serialized_parameters = Aggregators.fedavg_aggregate(parameters_list, weights)
         self.set_model(serialized_parameters)
         self._LOGGER.info(

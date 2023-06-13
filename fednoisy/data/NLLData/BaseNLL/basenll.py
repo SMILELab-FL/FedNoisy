@@ -54,7 +54,7 @@ class NLLBase(object):
             }
             torch.save(testset_dict, self.testset_path)
             print(
-                f"Test set saved to {self.testset_path}, with keys 'data', 'labels', 'class_to_idx', 'classes'."
+                f"Test set saved to {self.testset_path}, with keys {list(testset_dict.keys())}."
             )
         else:
             print(f"Test set file {self.testset_path} already exists.")
@@ -69,7 +69,7 @@ class NLLBase(object):
             }
             torch.save(trainset_dict, self.trainset_path)
             print(
-                f"Train set saved to {self.trainset_path}, with keys 'data', 'labels', 'class_to_idx', 'classes'."
+                f"Train set saved to {self.trainset_path}, with keys {list(trainset_dict.keys())}."
             )
         else:
             print(f"Train set file {self.trainset_path} already exists.")

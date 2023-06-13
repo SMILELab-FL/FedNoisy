@@ -51,6 +51,10 @@ else:
     args.cuda = False
 
 setup_seed(args.seed)
+if args.dataset == "clothing1m":
+    args.noise_mode = "real"
+    args.globalize = True
+    args.noise_ratio = 0.39
 
 nll_name = nllF.FedNLL_name(**vars(args))
 exp_name = make_exp_name("fedavg", args)
@@ -62,7 +66,6 @@ if args.coteaching is True:
     model = build_multi_model(
         args.model, CLASS_NUM[args.dataset], dataset=args.dataset, num_models=2
     )
-    pass
 else:
     model = build_model(args.model, CLASS_NUM[args.dataset], dataset=args.dataset)
 

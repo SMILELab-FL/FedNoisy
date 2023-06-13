@@ -75,10 +75,9 @@ def read_fednll_args():
         "--noise_mode",
         default=None,
         type=str,
-        choices=["clean", "sym", "asym"],
+        choices=["clean", "sym", "asym", "real"],
         help="Noise type for centralized setting: 'sym' for symmetric noise; "
-        "'asym' for asymmetric noise; 'real' for real-world noise. Only works "
-        "if --centralized=True.",
+        "'asym' for asymmetric noise; 'real' for real-world noise. ",
     )
     parser.add_argument(
         "--globalize",
@@ -103,6 +102,12 @@ def read_fednll_args():
         default=1.0,
         type=float,
         help="Maximum noise ratio for symmetric noise or asymmetric noise. Only works when 'globalize' is Flase",
+    )
+    parser.add_argument(
+        "--num_samples",
+        default=32 * 2 * 1000,
+        type=int,
+        help="Number of samples used for Clothing1M training. Defaults as 64000.",
     )
 
     # ----Robust Loss Function options----
@@ -188,6 +193,14 @@ def read_fednll_args():
         choices=["static", "dynamic"],
         help="Dynamic Bootstrapping: Type of bootstrapping. Available: 'static' (as in the paper, default), 'dynamic' (BMM to mix the smaples, will use decreasing softmax). Default: 'static'",
     )
+    # parser.add_argument("--debug", action="store_true")
+    # parser.add_argument(
+    #     "--dynboot_M",
+    #     nargs="+",
+    #     type=int,
+    #     default=[167, 417],
+    #     help="Milestones for the LR sheduler, default 100 250",
+    # )
     parser.add_argument(
         "--dynboot_alpha",
         type=float,

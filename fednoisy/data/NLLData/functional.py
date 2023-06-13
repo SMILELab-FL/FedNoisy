@@ -17,36 +17,53 @@ from fednoisy.data import CLASS_NUM
 
 class NoisyDataset(Dataset):
     def __init__(
-        self, data, labels, noisy_labels=None, train=True, transform=None
+        self,
+        data,
+        labels,
+        noisy_labels=None,
+        train=True,
+        transform=None,
+        folder_data=False,
     ) -> None:
+        """_summary_
+
+        Args:
+            data (_type_): _description_
+            labels (_type_): _description_
+            noisy_labels (_type_, optional): _description_. Defaults to None.
+            train (bool, optional): _description_. Defaults to True.
+            transform (_type_, optional): _description_. Defaults to None.
+            folder_data (bool, optional): For large dataset (i.e., Clothing1M), ``folder_data`` is ``True``, that only image paths are stored in ``Dataset``; for small dataset (i.e., CIFAR-10, CIFAR-100, SVHN, MNIST), ``foldre_data`` is ``False``, that images are stored in ``Dataset``. Defaults to ``False``.
+        """
         self.data = data
         self.labels = labels
         self.noisy_labels = noisy_labels
         self.train = train
         self.transform = transform
+        self.folder_data = folder_data
 
-        shape = data[0].shape
-        ndim = len(shape)
-        if ndim == 2:
-            self.mode = "L"  # MNIST
-        elif ndim == 3 and shape[-1] == 3:
-            self.mode = "RGB"  # CIFAR10 & CIFAR100 & SVHN
+        if self.folder_data is False:
+            shape = data[0].shape
+            ndim = len(shape)
+            if ndim == 2:
+                self.mode = "L"  # MNIST
+            elif ndim == 3 and shape[-1] == 3:
+                self.mode = "RGB"  # CIFAR10 & CIFAR100 & SVHN
 
     def __getitem__(self, index):
-        if self.train:
-            img, label, noisy_label = (
-                self.data[index],
-                self.labels[index],
-                self.noisy_labels[index],
-            )
-        else:
+        if self.folder_data is False:
+            # CIFAR10 & CIFAR100 & SVHN & MNIST
             img, label = self.data[index], self.labels[index]
-
-        img = Image.fromarray(img, mode=self.mode)
+            img = Image.fromarray(img, mode=self.mode)
+        else:
+            # clothing1m data
+            img_path, label = self.data[index], self.labels[index]
+            img = Image.open(img_path).convert("RGB")
 
         img = self.transform(img)
 
         if self.train:
+            noisy_label = self.noisy_labels[index]
             return img, label, noisy_label
         else:
             return img, label
@@ -73,10 +90,14 @@ def FedNLL_name(
         partition_param = ""
     partition_setting = f"{num_clients}_{partition}_{partition_param}"
     noise_setting = ""
-    if globalize is False:
-        noise_param = f"local_{noise_mode}_min_{kw['min_noise_ratio']:.2f}_max_{kw['max_noise_ratio']:.2f}"
+    if noise_mode != "real":
+        if globalize is False:
+            noise_param = f"local_{noise_mode}_min_{kw['min_noise_ratio']:.2f}_max_{kw['max_noise_ratio']:.2f}"
+        else:
+            noise_param = f"global_{noise_mode}_{kw['noise_ratio']:.2f}"  # if noise_ratio is a float number
     else:
-        noise_param = f"global_{noise_mode}_{kw['noise_ratio']:.2f}"  # if noise_ratio is a float number
+        if dataset == "clothing1m":
+            noise_param = f"{noise_mode}_{kw['num_samples']}"
     setting = f"{partition_setting}_{noise_param}"
     return f"{prefix}_{dataset}_{setting}"
 

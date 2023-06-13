@@ -42,6 +42,15 @@ class NLLClothing1M(NLLBase):
             self.class_to_idx = {_class: i for i, _class in enumerate(classes)}
             self.classes = classes
 
+        clean_labels_dict = {}
+        with open(os.path.join(self.root_dir, "clean_label_kv.txt"), "r") as f:
+            lines = f.read().splitlines()
+            for l in lines:
+                entry = l.split()
+                img_path = os.path.join(self.root_dir, entry[0])
+                clean_labels_dict[img_path] = int(entry[1])
+        self.clean_labels_dict = clean_labels_dict
+
     def _load_testset(self, save: bool = True) -> None:
         """
         Args:
@@ -51,26 +60,21 @@ class NLLClothing1M(NLLBase):
         """
         if os.path.exists(self.testset_path):
             entry = torch.load(self.testset_path)
-            test_data = entry["data"]  # entry["test_imgs"]
-            test_labels = entry["labels"]  # entry["test_labels"]
+            test_data = entry["data"]
+            test_labels = entry["labels"]
         else:
-            test_labels = {}
-            with open(os.path.join(self.root_dir, "clean_label_kv.txt"), "r") as f:
-                lines = f.read().splitlines()
-                for l in lines:
-                    entry = l.split()
-                    img_path = os.path.join(self.root_dir, entry[0])
-                    test_labels[img_path] = int(entry[1])
-
             test_data = []
+            test_labels = []
             with open(os.path.join(self.root_dir, "clean_test_key_list.txt"), "r") as f:
                 lines = f.read().splitlines()
                 for l in lines:
                     img_path = os.path.join(self.root_dir, l)
                     test_data.append(img_path)
+                    test_labels.append(self.clean_labels_dict[img_path])
 
         self.test_labels = test_labels
         self.test_data = test_data
+        print(f"{self.dataset_name} testset is loaded.")
         if save is True:
             self.save_testset()
 
@@ -83,28 +87,31 @@ class NLLClothing1M(NLLBase):
         """
         if os.path.exists(self.trainset_path):
             entry = torch.load(self.trainset_path)
-            train_data = entry["data"]  # entry['train_imgs']
-            train_labels = entry["labels"]  # entry['train_labels']
+            total_train_data = entry["data"]
+            total_train_labels = entry["labels"]
         else:
-            train_labels = {}
+            # train_labels = {}
+            noisy_labels_dict = {}
             with open(os.path.join(self.root_dir, "noisy_label_kv.txt"), "r") as f:
                 lines = f.read().splitlines()
                 for l in lines:
                     entry = l.split()
                     img_path = os.path.join(self.root_dir, entry[0])
-                    train_labels[img_path] = int(entry[1])
+                    noisy_labels_dict[img_path] = int(entry[1])
 
-            train_data = []
+            total_train_data = []
+            total_train_labels = []
             with open(
                 os.path.join(self.root_dir, "noisy_train_key_list.txt"), "r"
             ) as f:
                 lines = f.read().splitlines()
                 for l in lines:
                     img_path = os.path.join(self.root_dir, l)
-                    train_data.append(img_path)
+                    total_train_data.append(img_path)
+                    total_train_labels.append(noisy_labels_dict[img_path])
 
-        self.train_data = train_data
-        self.train_labels = train_labels
+        self.total_train_data = total_train_data
+        self.total_train_labels = total_train_labels
         print(f"{self.dataset_name} trainset is loaded.")
         if save is True:
             self.save_trainset()
@@ -112,29 +119,50 @@ class NLLClothing1M(NLLBase):
     def _load_valset(self, save: bool = True) -> None:
         if os.path.exists(self.valset_path):
             entry = torch.load(self.valset_path)
-            val_data = entry["data"]  # entry['val_imgs']
+            val_data = entry["data"]
+            val_labels = entry["labels"]
         else:
             val_data = []
+            val_labels = []
             with open(os.path.join(self.root_dir, "clean_val_key_list.txt"), "r") as f:
                 lines = f.read().splitlines()
                 for l in lines:
                     img_path = os.path.join(self.root_dir, l)
                     val_data.append(img_path)
+                    val_labels.append(self.clean_labels_dict[img_path])
 
         self.val_data = val_data
+        self.val_labels = val_labels
+        print(f"{self.dataset_name} valset is loaded.")
         if save is True:
             self.save_valset()
+
+    def save_trainset(self) -> None:
+        if not os.path.exists(self.trainset_path):
+            trainset_dict = {
+                "data": self.total_train_data,
+                "labels": self.total_train_labels,
+                "class_to_idx": self.class_to_idx,
+                "classes": self.classes,
+            }
+            torch.save(trainset_dict, self.trainset_path)
+            print(
+                f"Train set saved to {self.trainset_path}, with keys {list(trainset_dict.keys())}."
+            )
+        else:
+            print(f"Train set file {self.trainset_path} already exists.")
 
     def save_valset(self) -> None:
         if not os.path.exists(self.valset_path):
             valset_dict = {
                 "data": self.val_data,
+                "labels": self.val_labels,
                 "class_to_idx": self.class_to_idx,
                 "classes": self.classes,
             }
             torch.save(valset_dict, self.valset_path)
             print(
-                f"Val set saved to {self.valset_path}, with keys 'data', 'class_to_idx', 'classes'."
+                f"Val set saved to {self.valset_path}, with keys {list(valset_dict.keys())}."
             )
         else:
             print(f"Val set file {self.valset_path} already exists.")
