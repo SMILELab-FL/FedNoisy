@@ -1,6 +1,6 @@
-# FedNoisy
+# FedNoisy: Federated Noisy Label Learning Benchmark
 
-Benchmark for federated noisy label learning
+Benchmark for federated noisy label learning.
 
 
 [toc]
