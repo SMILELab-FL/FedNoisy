@@ -5,6 +5,12 @@ Benchmark for federated noisy label learning.
 
 [toc]
 
+[![License](https://img.shields.io/github/license/SMILELab-FL/FedNoisy)](https://opensource.org/licenses/Apache-2.0) [![arXiv](https://img.shields.io/badge/arXiv-2306.11650-red.svg)](https://arxiv.org/abs/2306.11650) 
+
+Federated learning has gained popularity for distributed learning without aggregating sensitive data from clients. But meanwhile, the distributed and isolated nature of data isolation may be complicated by data quality, making it more vulnerable to noisy labels. Many efforts exist to defend against the negative impacts of noisy labels in centralized or federated settings. However, there is a lack of a benchmark that comprehensively considers the impact of noisy labels in a wide variety of typical FL settings. 
+
+In this work, we serve the first standardized benchmark that can help researchers fully explore potential federated noisy settings. Also, we conduct comprehensive experiments to explore the characteristics of these data settings and unravel challenging scenarios on the federated noisy label learning, which may guide method development in the future. We highlight the 20 basic settings for more than 5 datasets proposed in our benchmark and standardized simulation pipeline for federated noisy label learning. We hope this benchmark can facilitate idea verification in federated learning with noisy labels. 
+
 ## Environment requirements
 
 Pytorch installation via `conda`:
