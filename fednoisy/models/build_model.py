@@ -1,7 +1,8 @@
 from .cnn import Cifar10Net, SimpleCNN, SimpleCNNMNIST
-from .lenet import LeNet
+from .lenet import CIFAR10LeNet, MNISTLeNet
 from .toymodel import ToyModel
 from .resnet import ResNet18, ResNet34
+from .resnet2 import ResNet20, ResNet32
 from .preresnet import ResNet18 as PreResNet18
 from .wideresnet import WRN28_10, WRN40_2
 from .vgg import VGG11, VGG13, VGG16, VGG19
@@ -36,11 +37,22 @@ def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"
                 input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=10
             )
     elif model_name == "LeNet":
-        base_model = LeNet()
+        if dataset.upper() == ["CIFAR10", "SVHN"]:
+            base_model = CIFAR10LeNet()
+        elif dataset.upper() == "MNIST":
+            base_model = MNISTLeNet()
+        else:
+            raise ValueError(
+                f"{model_name} currently does not support {dataset.upper()}. Only CIFAR10 and MNIST are supported."
+            )
     elif model_name == "PreResNet18":
         base_model = PreResNet18(num_classes)
     elif model_name == "ResNet18":
         base_model = ResNet18(num_classes)
+    elif model_name == "ResNet20":
+        base_model = ResNet20(num_classes)
+    elif model_name == "ResNet32":
+        base_model = ResNet32(num_classes)
     elif model_name == "ResNet34":
         base_model = ResNet34(num_classes)
     elif model_name == "ResNet50":
@@ -62,7 +74,7 @@ def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"
         base_model = VGG19()
     else:
         raise ValueError(
-            f"Unrecognized model: {model_name}. Currently only support 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'ResNet18', 'WRN28_10', 'WRN40_2' and 'ResNet34'."
+            f"Unrecognized model: {model_name}. Currently only support 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'ResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2', 'ResNet32' and 'ResNet34'."
         )
 
     return base_model
@@ -107,7 +119,15 @@ def build_multi_model(
                 ]
             )
     elif model_name == "LeNet":
-        base_model = MultiModel([LeNet() for _ in range(num_models)])
+        if dataset.upper() in ["CIFAR10", "SVHN"]:
+            model_arch = CIFAR10LeNet
+        elif dataset.upper() == "MNIST":
+            model_arch = MNISTLeNet
+        else:
+            raise ValueError(
+                f"{model_name} currently does not support {dataset.upper()}. Only CIFAR10 and MNIST are supported."
+            )
+        base_model = MultiModel([model_arch() for _ in range(num_models)])
     elif model_name == "ResNet18":
         base_model = MultiModel([ResNet18(num_classes) for _ in range(num_models)])
     elif model_name == "ResNet34":

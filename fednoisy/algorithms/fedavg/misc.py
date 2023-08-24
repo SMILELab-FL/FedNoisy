@@ -23,7 +23,7 @@ def read_fednll_args():
         "--model",
         type=str,
         default="ResNet18",
-        help="Currently only support 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'ResNet18', 'WRN28_10', 'WRN40_2' and 'ResNet34'.",
+        help="Currently only support 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'ResNet18', 'PreResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2' and 'ResNet34'.",
     )
     parser.add_argument("--sample_ratio", type=float, default=0.3)
     parser.add_argument("--batch_size", type=int, default=128)
