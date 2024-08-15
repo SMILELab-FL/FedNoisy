@@ -462,6 +462,110 @@ For more scripts, please check [scripts](./scripts/) folder.
 - [ ] Graph node classification datasets (long term goal)
 
 
+
+## Contributing to FedNoisy
+
+### Reporting bugs
+
+We use GitHub issues to track all bugs and feature requests. Feel free to open an issue if you have found a bug or wish to see a feature implemented.
+
+In case you experience issues using this package, do not hesitate to submit a ticket to the [Bug Tracker](https://github.com/SMILELab-FL/FedNoisy/issues). You are also welcome to post feature requests or pull requests.
+
+
+
+### Contributing code
+
+You’re welcome to contribute to this project through **Pull Request**. By contributing, you agree that your contributions will be licensed under [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html).
+
+
+
+We encourage you to contribute to the improvement of FedNoisy or the FedNoisy implementation of existing FNLL methods. The preferred workflow for contributing to FedNoisy is to fork the main repository on GitHub, clone, and develop on a branch. Steps as follow:
+
+1. Fork the project repository by clicking on the `Fork`. For contributing new features, please fork FedNoisy [core repo](https://github.com/SMILELab-FL/FedNoisy).
+
+2. Clone your fork of repo from your GitHub to your local:
+
+   ```shell
+   $ git clone git@github.com:YourLogin/FedLab.git
+   $ cd FedNoisy
+   ```
+
+3. Create a new branch to save your changes:
+
+   ```shell
+   $ git checkout -b my-feature
+   ```
+
+4. Develop the feature on your branch.
+
+   ```shell
+   $ git add modified_files
+   $ git commit
+   ```
+
+
+
+### Pull request checklist
+
+- Please follow the file structure below for new features or create new file if there are something new.
+
+  ```shell
+  fednoisy
+  ├── __init__.py
+  ├── algorithms
+  │   ├── __init__.py
+  │   └── fedavg
+  │       ├── __init__.py
+  │       ├── client.py               # FL client class definition
+  │       ├── main.py                 # FL algorithm main script
+  │       ├── misc.py                 
+  │       ├── server.py               # FL server class definition
+  │       └── standalone.py           # FL standalone pipeline class definition
+  ├── data
+  │   ├── NLLData
+  │   │   ├── BaseNLL                 # Base class for datasets, for download and preprocess
+  │   │   ├── CentrNLL                # CNLL class for datasets, including adding noise 
+  │   │   ├── FedNLL                  # FNLL class for datasets, including adding noise and partition
+  │   │   ├── __init__.py
+  │   │   └── functional.py           # Utility functions for noisy label datasets
+  │   ├── __init__.py
+  │   ├── dataset.py
+  │   ├── ...
+  │   └── functional.py
+  ├── models
+  │   ├── __init__.py
+  │   ├── build_model.py               # model entries
+  │   ├── cnn.py                       # model architecture files
+  │   ├── .....
+  │   └── wideresnet.py
+  ├── utils                            # Utitlity functions for different algorithms  
+  └── visual.py                        # Visualization functions for FNLL & CNLL data
+  ```
+
+- Please provide shell script to launch new functions or new algorithms
+
+- All public methods should have informative docstrings with sample usage presented as doctests when appropriate. Docstring and code should follow Google Python Style Guide: [中文版](https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/python_style_rules/) | [English](https://google.github.io/styleguide/pyguide.html).
+
+  > __Note:__ We understand it can be a burden to add detailed docstring for code. Please have a try if it is convenient for you.
+
+
+
+## Citation
+
+Please cite __FedNoisy__ in your publications if it helps your research:
+
+```latex
+@article{liang2023fednoisy,
+  title={FedNoisy: Federated noisy label learning benchmark},
+  author={Liang, Siqi and Huang, Jintao and Hong, Junyuan and Zeng, Dun and Zhou, Jiayu and Xu, Zenglin},
+  journal={arXiv preprint arXiv:2306.11650},
+  year={2023}
+}
+```
+
+
+
+
 ## References
 
 <a id="1">[1]</a> LeCun, Y. (1998). The MNIST database of handwritten digits. http://yann.lecun.com/exdb/mnist/.
