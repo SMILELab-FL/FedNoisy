@@ -436,6 +436,25 @@ $ python build_dataset_fed.py --dataset cifar10 \
 For more scripts, please check [scripts](./scripts/) folder.
 
 
+
+## Development plan
+
+### Datasets
+
+- [ ] Include mini-ImageNet (synthetic noise)
+- [ ] Include Food-101N (real-world noise)
+- [ ] Include ANIMAL-10N (real-world noise)
+
+
+
+### FNLL baselines
+
+- [ ] Implement FedNoRo (working on...)
+- [ ] Implement FedNed (working on...)
+- [ ] Implement FedCorr (a little bit complicated)
+- [ ] 
+
+
 ## References
 
 <a id="1">[1]</a> LeCun, Y. (1998). The MNIST database of handwritten digits. http://yann.lecun.com/exdb/mnist/.
