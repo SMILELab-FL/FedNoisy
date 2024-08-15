@@ -452,7 +452,14 @@ For more scripts, please check [scripts](./scripts/) folder.
 - [ ] Implement FedNoRo (working on...)
 - [ ] Implement FedNed (working on...)
 - [ ] Implement FedCorr (a little bit complicated)
-- [ ] 
+
+
+
+### Others
+
+- [ ] Mixed noise modes over different clients (easy to implement)
+- [ ] Text datasets (long term goal)
+- [ ] Graph node classification datasets (long term goal)
 
 
 ## References
