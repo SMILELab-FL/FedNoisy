@@ -356,6 +356,108 @@ $ python build_dataset_fed.py --dataset cifar10 \
         --seed 1
     ```
   
+  - FedAvg + GCE
+  
+    ```bash
+    # under dir FedNoisy/
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 0.0005 \
+        --criterion gce \
+        --gce_q 0.7 \
+        --seed 1
+    ```
+  
+  - FedAvg + MAE
+  
+    ```bash
+    # under dir FedNoisy/
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 0.0005 \
+        --criterion mae \
+        --loss_scale 1.0 \
+        --seed 1
+    ```
+  
+  - FedAvg + M-DYR-H
+  
+    ```bash
+    # under dir FedNoisy/
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 0.0005 \
+        --dynboot \
+        --dynboot_alpha 32 \
+        --dynboot_mixup static \
+        --dynboot_bootbeta hard \
+        --dynboot_reg 1.0 \
+        --seed 1
+    ```
+  
+  - FedAvg + M-DYR-S
+  
+    ```bash
+    # under dir FedNoisy/
+    $ python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 0.0005 \
+        --dynboot \
+        --dynboot_alpha 32 \
+        --dynboot_mixup static \
+        --dynboot_bootbeta soft \
+        --dynboot_reg 1.0 \
+        --seed 1
+    ```
+  
   - FedAvg + DM-DYR-SH
   
     ```bash
@@ -374,7 +476,7 @@ $ python build_dataset_fed.py --dataset cifar10 \
         --sample_ratio 1.0 \
         --lr 0.01 \
         --momentum 0.9 \
-        --weight_decay 1e-4 \
+        --weight_decay 0.0005 \
         --dynboot \
         --dynboot_alpha 32 \
         --dynboot_mixup dynamic \
