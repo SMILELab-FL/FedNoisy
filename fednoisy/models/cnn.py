@@ -25,6 +25,34 @@ class Cifar10Net(nn.Module):
         return out
 
 
+class ConvNet5(nn.Module):
+    """LeNet in PyTorch from https://github.com/Princeton-SysML/GradAttack/blob/master/gradattack/models/LeNet.py
+
+    Currently only for MNIST
+    """
+
+    def __init__(self, num_classes=10, num_channels=3):
+        super(ConvNet5, self).__init__()
+        self.conv1 = nn.Conv2d(num_channels, 12, 5, padding=5 // 2, stride=2)
+        self.conv2 = nn.Conv2d(12, 12, 5, padding=5 // 2, stride=2)
+        self.conv3 = nn.Conv2d(12, 12, 5, padding=5 // 2, stride=1)
+        self.conv4 = nn.Conv2d(12, 12, 5, padding=5 // 2, stride=1)
+        self.sigmoid = nn.Sigmoid()
+        if num_channels == 3:
+            self.fc = nn.Linear(768, num_classes)
+        elif num_channels == 1:
+            self.fc = nn.Linear(588, num_classes)
+
+    def forward(self, x):
+        x = self.sigmoid(self.conv1(x))
+        x = self.sigmoid(self.conv2(x))
+        x = self.sigmoid(self.conv3(x))
+        x = self.sigmoid(self.conv4(x))
+        feature = x.view(x.size(0), -1)
+        out = self.fc(feature)
+        return out
+
+
 class SimpleCNNMNIST(nn.Module):
     """Code from https://github.com/Xtra-Computing/NIID-Bench"""
 

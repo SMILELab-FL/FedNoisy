@@ -23,7 +23,7 @@ def read_fednll_args():
         "--model",
         type=str,
         default="ResNet18",
-        help="Currently only support 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'ResNet18', 'PreResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2' and 'ResNet34'.",
+        help="Currently only support 'TwoLayerLinear', 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'PreResNet18', 'ResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2', 'ResNet32' and 'ResNet34'.",
     )
     parser.add_argument("--sample_ratio", type=float, default=0.3)
     parser.add_argument("--batch_size", type=int, default=128)
@@ -108,6 +108,12 @@ def read_fednll_args():
         default=32 * 2 * 1000,
         type=int,
         help="Number of samples used for Clothing1M training. Defaults as 64000.",
+    )
+    parser.add_argument(
+        "--feature_dim",
+        default=20,
+        type=int,
+        help="Feature dimension for synthetic dataset",
     )
 
     # ----Robust Loss Function options----
@@ -227,8 +233,16 @@ def read_fednll_args():
         "--dataset",
         default="cifar10",
         type=str,
-        choices=["mnist", "cifar10", "cifar100", "svhn", "clothing1m", "webvision"],
-        help="Dataset for experiment. Current support: ['mnist', 'cifar10', "
+        choices=[
+            "synthetic",
+            "mnist",
+            "cifar10",
+            "cifar100",
+            "svhn",
+            "clothing1m",
+            "webvision",
+        ],
+        help="Dataset for experiment. Current support: ['synthetic', 'mnist', 'cifar10', "
         "'cifar100', 'svhn', 'clothing1m', 'webvision']",
     )
     parser.add_argument(
@@ -245,10 +259,14 @@ def read_fednll_args():
     )
 
     # ----Miscs options----
+    parser.add_argument("--proj_name", default="FedNoisy-debug", type=str)
     parser.add_argument(
         "--save_best", action="store_true", help="Whether to save the best model."
     )
     parser.add_argument("--seed", default=0, type=int, help="Random seed")
 
     args = parser.parse_args()
+
+    # default setting
+    args.personalize = False
     return args

@@ -1,4 +1,4 @@
-from .cnn import Cifar10Net, SimpleCNN, SimpleCNNMNIST
+from .cnn import Cifar10Net, SimpleCNN, SimpleCNNMNIST, ConvNet5
 from .lenet import CIFAR10LeNet, MNISTLeNet
 from .toymodel import ToyModel
 from .resnet import ResNet18, ResNet34
@@ -6,12 +6,19 @@ from .resnet2 import ResNet20, ResNet32
 from .preresnet import ResNet18 as PreResNet18
 from .wideresnet import WRN28_10, WRN40_2
 from .vgg import VGG11, VGG13, VGG16, VGG19
+from .fcnet import TwoLayerLinearNet, LinearRegression
+from .mlp import DMLP
 
 from torch import nn
 import torchvision
 
 
-def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"):
+def build_model(
+    model_name: str,
+    num_classes: int = 10,
+    dataset: str = "CIFAR10",
+    input_size: int = 20,
+):
     """_summary_
 
     Args:
@@ -25,8 +32,22 @@ def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"
     Returns:
         _type_: _description_
     """
-    if model_name == "Cifar10Net":
+    if model_name == "TwoLayerLinear":
+        if dataset.upper() == "MNIST":
+            base_model = TwoLayerLinearNet(
+                input_size=784, hidden_size=500, num_classes=num_classes
+            )
+    elif model_name == "LinearRegression":
+        base_model = LinearRegression(input_dim=input_size, output_dim=1)
+    elif model_name == "Cifar10Net":
         base_model = Cifar10Net()
+    elif model_name == "ConvNet5":
+        if dataset.upper() == "MNIST":
+            base_model = ConvNet5(num_channels=1)
+        else:
+            raise ValueError(
+                f"{model_name} currently not supports {dataset}. Only mnist is supported."
+            )
     elif model_name == "SimpleCNN":
         if dataset.upper() in ["CIFAR10", "SVHN"]:
             base_model = SimpleCNN(
@@ -36,8 +57,18 @@ def build_model(model_name: str, num_classes: int = 10, dataset: str = "CIFAR10"
             base_model = SimpleCNNMNIST(
                 input_dim=(16 * 4 * 4), hidden_dims=[120, 84], output_dim=10
             )
+    elif model_name == "DMLP":
+        if dataset.upper() == "MNIST":
+            data_shape = (1, 28, 28)
+        elif dataset.upper() == "CIFAR10":
+            data_shape = (3, 32, 32)
+        else:
+            raise ValueError(
+                f"{model_name} currently not supports {dataset}. Only cifar10, mnist are supported."
+            )
+        base_model = DMLP(num_classes=num_classes, data_shape=data_shape)
     elif model_name == "LeNet":
-        if dataset.upper() == ["CIFAR10", "SVHN"]:
+        if dataset.upper() in ["CIFAR10", "SVHN"]:
             base_model = CIFAR10LeNet()
         elif dataset.upper() == "MNIST":
             base_model = MNISTLeNet()
@@ -96,7 +127,17 @@ def build_multi_model(
     Returns:
         _type_: _description_
     """
-    if model_name == "Cifar10Net":
+    if model_name == "TwoLayerLinear":
+        if dataset.upper() == "MNIST":
+            base_model = MultiModel(
+                [
+                    TwoLayerLinearNet(
+                        input_size=28 * 28, hidden_size=500, num_classes=10
+                    )
+                    for _ in range(num_models)
+                ]
+            )
+    elif model_name == "Cifar10Net":
         base_model = MultiModel([Cifar10Net() for _ in range(num_models)])
     elif model_name == "SimpleCNN":
         if dataset.upper() in ["CIFAR10", "SVHN"]:

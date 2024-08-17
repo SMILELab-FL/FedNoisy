@@ -4,6 +4,9 @@ import sys
 import argparse
 import random
 from copy import deepcopy
+import numpy as np
+
+import wandb
 
 import torch
 from torch import nn
@@ -62,6 +65,11 @@ class FedAvgStandalone(StandalonePipeline):
         self.acc_hist = []
         self.max_acc = 0
 
+        self.run_name = f"{self.nll_name}-{alg_name}-{self.exp_name}"
+        self.wb_run = wandb.init(
+            config=self.args, project=self.args.proj_name, name=self.run_name
+        )
+
     def main(self):
         # check existence of record file
         if os.path.exists(self.record_file):
@@ -97,11 +105,15 @@ class FedAvgStandalone(StandalonePipeline):
                 self.last_model_path,
             )
 
+        self.wb_run.log({"final_test_acc": np.mean(self.acc_hist[-10:])})
+        self.wb_run.finish()
+
     def evaluate(self):
         loss_, acc_ = self.handler.evaluate()
         self.handler._LOGGER.info(
             f"Round [{self.handler.round - 1}/{self.handler.global_round}] test performance on server: \t Loss: {loss_:.5f} \t Acc: {100*acc_:.3f}%"
         )
+        self.wb_run.log({"test_loss": loss_, "test_acc": 100 * acc_})
         self.loss_hist.append(loss_)
         self.acc_hist.append(acc_ * 100)
         record = open(self.record_file, "w")

@@ -67,7 +67,12 @@ if args.coteaching is True:
         args.model, CLASS_NUM[args.dataset], dataset=args.dataset, num_models=2
     )
 else:
-    model = build_model(args.model, CLASS_NUM[args.dataset], dataset=args.dataset)
+    model = build_model(
+        args.model,
+        CLASS_NUM[args.dataset],
+        dataset=args.dataset,
+        input_size=args.feature_dim,
+    )
 
 # ==== prepare logger ====
 server_logger = Logger(

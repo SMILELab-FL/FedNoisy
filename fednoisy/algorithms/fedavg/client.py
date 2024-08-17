@@ -429,7 +429,7 @@ class FedNLLFedAvgDynamicBootstrappingClientTrainer(FedNLLFedAvgClientTrainer):
                             self.bmm_model_maxLoss,
                             self.bmm_model_minLoss,
                             alpha,
-                            self.args.dymboot_reg,
+                            self.args.dynboot_reg,
                             CLASS_NUM[self.args.dataset],
                             self.device,
                         )
@@ -445,7 +445,7 @@ class FedNLLFedAvgDynamicBootstrappingClientTrainer(FedNLLFedAvgClientTrainer):
                             self.bmm_model_maxLoss,
                             self.bmm_model_minLoss,
                             alpha,
-                            self.args.dymboot_reg,
+                            self.args.dynboot_reg,
                             first_flag,
                             self.device,
                         )

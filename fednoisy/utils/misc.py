@@ -38,7 +38,7 @@ def setup_seed(seed: int = 0):
     torch.backends.cudnn.benchmark = False
 
 
-def evaluate(model, criterion, test_loader, device, multimodel=False):
+def evaluate(model, criterion, test_loader, device, multimodel=False, regression=False):
     """Evaluate classify task model accuracy, allow ``model`` contains multiple networks .
 
     Returns:
@@ -52,6 +52,7 @@ def evaluate(model, criterion, test_loader, device, multimodel=False):
 
     loss_ = AverageMeter()
     acc_ = AverageMeter()
+
     with torch.no_grad():
         for inputs, labels in test_loader:
             inputs = inputs.to(device)
@@ -59,15 +60,21 @@ def evaluate(model, criterion, test_loader, device, multimodel=False):
             batch_size = len(labels)
 
             outputs = model(inputs)
+            # print(f"outputs.shape={outputs.shape}, labels.shape={labels.shape}")
             if multimodel is True:
                 # sum over outputs of all nets
                 outputs = torch.sum(torch.stack(outputs), dim=0)
 
+            # print(f"criterion={criterion.__class__.__name__}")
             loss = criterion(outputs, labels)
 
-            _, predicted = torch.max(outputs, 1)
+            if not regression:
+                _, predicted = torch.max(outputs, 1)
+                acc_.update(
+                    torch.sum(predicted.eq(labels)).item() / batch_size, batch_size
+                )
+
             loss_.update(loss.item(), batch_size)
-            acc_.update(torch.sum(predicted.eq(labels)).item() / batch_size, batch_size)
 
     return loss_.avg, acc_.avg
 
