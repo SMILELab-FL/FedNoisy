@@ -70,6 +70,7 @@ class FedAvgServerHandler(SyncServerHandler):
 
     def evaluate(self):
         self._model.eval()
+
         test_loader = self.dataset.get_dataloader(train=False, batch_size=128)
         multimodel = hasattr(self._model, "models")
         loss_, acc_ = misc.evaluate(
@@ -79,5 +80,26 @@ class FedAvgServerHandler(SyncServerHandler):
             self.device,
             multimodel=multimodel,
         )
+
+        if self.args.dataset == "webvision":
+            imagenet_test_loader = self.dataset.get_dataloader(
+                train=False, batch_size=128, imagenet=True
+            )
+
+            imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = misc.evaluate(
+                self._model,
+                nn.CrossEntropyLoss(),
+                imagenet_test_loader,
+                self.device,
+                multimodel=multimodel,
+                imagenet=True,
+            )
+            return (
+                loss_,
+                acc_,
+                imagenet_loss_,
+                imagenet_acc1_,
+                imagenet_acc5_,
+            )
 
         return loss_, acc_

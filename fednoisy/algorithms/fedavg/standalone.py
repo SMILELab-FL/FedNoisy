@@ -109,11 +109,28 @@ class FedAvgStandalone(StandalonePipeline):
         self.wb_run.finish()
 
     def evaluate(self):
-        loss_, acc_ = self.handler.evaluate()
-        self.handler._LOGGER.info(
-            f"Round [{self.handler.round - 1}/{self.handler.global_round}] test performance on server: \t Loss: {loss_:.5f} \t Acc: {100*acc_:.3f}%"
-        )
-        self.wb_run.log({"test_loss": loss_, "test_acc": 100 * acc_})
+        if self.args.dataset == "webvision":
+            loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = (
+                self.handler.evaluate()
+            )
+            self.handler._LOGGER.info(
+                f"Round [{self.handler.round - 1}/{self.handler.global_round}] test performance on server: \t Loss: {loss_:.5f} \t Acc: {100*acc_:.3f}% \t ImageNet Loss: {imagenet_loss_:.5f} \t ImageNet Acc1: {100*imagenet_acc1_:.3f}% \t ImageNet Acc5: {100*imagenet_acc5_:.3f}%"
+            )
+            self.wb_run.log(
+                {
+                    "test_loss": loss_,
+                    "test_acc": 100 * acc_,
+                    "test_ImageNet_loss": imagenet_loss_,
+                    "test_ImageNet_top1_acc": 100 * imagenet_acc1_,
+                    "test_ImageNet_top5_acc": 100 * imagenet_acc5_,
+                }
+            )
+        else:
+            loss_, acc_ = self.handler.evaluate()
+            self.handler._LOGGER.info(
+                f"Round [{self.handler.round - 1}/{self.handler.global_round}] test performance on server: \t Loss: {loss_:.5f} \t Acc: {100*acc_:.3f}%"
+            )
+            self.wb_run.log({"test_loss": loss_, "test_acc": 100 * acc_})
         self.loss_hist.append(loss_)
         self.acc_hist.append(acc_ * 100)
         record = open(self.record_file, "w")

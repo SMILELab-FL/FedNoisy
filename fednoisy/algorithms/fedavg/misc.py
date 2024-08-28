@@ -23,7 +23,7 @@ def read_fednll_args():
         "--model",
         type=str,
         default="ResNet18",
-        help="Currently only support 'TwoLayerLinear', 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'PreResNet18', 'ResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2', 'ResNet32' and 'ResNet34'.",
+        help="Currently only support 'TwoLayerLinear', 'Cifar10Net', 'SimpleCNN',  'LeNet', 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ToyModel', 'PreResNet18', 'ResNet18', 'ResNet20', 'WRN28_10', 'WRN40_2', 'ResNet32', 'ResNet34' and 'InceptionResNetV2'.",
     )
     parser.add_argument("--sample_ratio", type=float, default=0.3)
     parser.add_argument("--batch_size", type=int, default=128)
@@ -226,6 +226,19 @@ def read_fednll_args():
         type=float,
         default=0.0,
         help="Dynamic Bootstrapping: Parameter of the regularization term, default: 0.",
+    )
+
+    # ----FedNoRo options----
+    parser.add_argument(
+        "--fednoro",
+        action="store_true",
+        help="Whether to use FedNoRo. Original paper is 'FedNoRo: Towards Noise-Robust Federated Learning by Addressing Class Imbalance and Label Noise Heterogeneity'.",
+    )
+    parser.add_argument(
+        "--fednoro_warmup",
+        type=int,
+        default=10,
+        help="FedNoRo: Warmup round number, default: 10. Original paper uses 10 rounds for warmup for total 100 rounds training.",
     )
 
     # ----Path options----

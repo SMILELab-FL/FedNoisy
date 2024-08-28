@@ -4,6 +4,7 @@ import os
 import json
 import ast
 import torch
+import torchnet
 
 
 class AverageMeter(object):
@@ -38,7 +39,15 @@ def setup_seed(seed: int = 0):
     torch.backends.cudnn.benchmark = False
 
 
-def evaluate(model, criterion, test_loader, device, multimodel=False, regression=False):
+def evaluate(
+    model,
+    criterion,
+    test_loader,
+    device,
+    multimodel=False,
+    regression=False,
+    imagenet=False,
+):
     """Evaluate classify task model accuracy, allow ``model`` contains multiple networks .
 
     Returns:
@@ -52,6 +61,10 @@ def evaluate(model, criterion, test_loader, device, multimodel=False, regression
 
     loss_ = AverageMeter()
     acc_ = AverageMeter()
+
+    if imagenet:
+        acc5_meter = torchnet.meter.ClassErrorMeter(topk=[5], accuracy=True)
+        acc5_meter.reset()
 
     with torch.no_grad():
         for inputs, labels in test_loader:
@@ -73,8 +86,13 @@ def evaluate(model, criterion, test_loader, device, multimodel=False, regression
                 acc_.update(
                     torch.sum(predicted.eq(labels)).item() / batch_size, batch_size
                 )
+                if imagenet:
+                    acc5_meter.add(outputs, labels)
 
             loss_.update(loss.item(), batch_size)
+
+    if imagenet:
+        return loss_.avg, acc_.avg, acc5_meter.value()[0] / 100
 
     return loss_.avg, acc_.avg
 

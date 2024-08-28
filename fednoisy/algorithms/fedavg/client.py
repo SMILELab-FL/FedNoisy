@@ -92,10 +92,18 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
                 cid=cid, train=True, batch_size=self.batch_size
             )
             pack = self.train(model_parameters, data_loader)
-            loss_, acc_ = self.evaluate()
-            self._LOGGER.info(
-                f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}"
-            )
+            if self.args.dataset == "webvision":
+                loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = (
+                    self.evaluate()
+                )
+                self._LOGGER.info(
+                    f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}; local ImageNet top-1 test accuracy: {imagenet_acc1_*100:.2f}%, local ImageNet top-5 test accuracy: {imagenet_acc5_*100:.2f}%, local ImageNet test loss: {imagenet_loss_:.4f};"
+                )
+            else:
+                loss_, acc_ = self.evaluate()
+                self._LOGGER.info(
+                    f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}"
+                )
             self.cache.append(pack)
 
     def train(self, model_parameters, train_loader):
@@ -107,7 +115,7 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
         data_size = len(train_loader.dataset)
 
         for epoch in range(self.epochs):
-            self._model.train()  # TODO
+            self._model.train()
             self._LOGGER.info(
                 f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]"
             )
@@ -124,6 +132,14 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
                 loss.backward()
                 self.optimizer.step()
 
+            # TODO: for debug evaluation
+            loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = (
+                self.evaluate()
+            )
+            self._LOGGER.info(
+                f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}; local ImageNet top-1 test accuracy: {imagenet_acc1_*100:.2f}%, local ImageNet top-5 test accuracy: {imagenet_acc5_*100:.2f}%, local ImageNet test loss: {imagenet_loss_:.4f};"
+            )
+
         local_result = [self.model_parameters, data_size]
         return local_result
 
@@ -138,7 +154,21 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
             multimodel=multimodel,
         )
 
-        # TODO: add ImageNet evaluation code
+        # ImageNet evaluation for webvision setting
+        if self.args.dataset == "webvision":
+            imagenet_test_loader = self.dataset.get_dataloader(
+                train=False, batch_size=128, imagenet=True
+            )
+
+            imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = misc.evaluate(
+                self._model,
+                nn.CrossEntropyLoss(),
+                imagenet_test_loader,
+                self.device,
+                multimodel=multimodel,
+                imagenet=True,
+            )
+            return loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_
 
         return loss_, acc_
 
@@ -512,6 +542,81 @@ class FedNLLFedAvgDynamicBootstrappingClientTrainer(FedNLLFedAvgClientTrainer):
             self._LOGGER.info(
                 f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]: train_acc: {train_acc*100:.2f}%, train_loss: {train_loss:.4f}, {msg}"
             )
+
+        local_result = [self.model_parameters, data_size]
+        return local_result
+
+
+class FedNLLFedNoRoClientTrainer(FedNLLFedAvgClientTrainer):
+    def __init__(
+        self,
+        model,
+        num_clients,
+        cuda=True,
+        device=None,
+        logger=None,
+        personal=False,
+        args=None,
+    ) -> None:
+        FedNLLFedAvgClientTrainer.__init__(
+            self,
+            model,
+            num_clients,
+            cuda,
+            device,
+            logger,
+            personal,
+            args,
+        )
+
+    def train(self, model_parameters, train_loader):
+        self.set_model(model_parameters)
+        self.setup_optim(
+            self.epochs, self.batch_size, self.lr, self.weight_decay, self.momentum
+        )
+        self._model.train()
+        data_size = len(train_loader.dataset)
+
+        for epoch in range(self.epochs):
+            self._LOGGER.info(
+                f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]"
+            )
+            train_loss = 0
+            correct = 0
+            total = 0
+            batch_num = len(train_loader)
+            for batch_idx, (imgs, labels, noisy_labels) in enumerate(train_loader):
+                if self.cuda:
+                    imgs = imgs.cuda(self.device)
+                    noisy_labels = noisy_labels.cuda(self.device)
+
+                imgs, targets_a, targets_b, lmbd = mixup_data(
+                    imgs, noisy_labels, self.args.mixup_alpha, self.device
+                )
+
+                outputs = self.model(imgs)
+                loss = mixup_criterion(
+                    self.criterion, outputs, targets_a, targets_b, lmbd
+                )
+
+                self.optimizer.zero_grad()
+                self._model.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                # with torch.no_grad():
+                #     train_loss += loss.detach()
+                #     _, pred = torch.max(outputs.data, 1)
+                #     total += noisy_labels.shape[0]
+                #     correct += (
+                #         lmbd * pred.eq(targets_a.data).cpu().sum().float()
+                #         + (1 - lmbd) * pred.eq(targets_b.data).cpu().sum().float()
+                #     )
+            # avg_train_loss = train_loss / batch_num
+            # train_acc = correct / total
+            # self._LOGGER.info(
+            #     f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}] train accuracy: {train_acc*100:.2f}%; local train loss: {avg_train_loss:.2f}"
+            # )
 
         local_result = [self.model_parameters, data_size]
         return local_result
