@@ -3,6 +3,8 @@ import torchvision.transforms as transforms
 import random
 import warnings
 import numpy as np
+import pandas as pd
+from collections import Counter
 from numpy.testing import assert_array_almost_equal
 from PIL import Image
 import json
@@ -13,6 +15,59 @@ import torchvision
 
 from typing import Dict, List, Set, Optional, Any
 from fednoisy.data import CLASS_NUM
+
+
+def partition_report(targets, data_indices, class_num=None, verbose=True, file=None):
+    """Generate data partition report for clients in ``data_indices``.
+
+    Generate data partition report for each client according to ``data_indices``, including
+    ratio of each class and dataset size in current client. Report can be printed in screen or into
+    file. The output format is comma-separated values which can be read by :func:`pandas.read_csv`
+    or :func:`csv.reader`.
+
+    This function is copied from https://github.com/SMILELab-FL/FedLab/blob/master/fedlab/utils/dataset/functional.py
+
+    Args:
+        targets (list or numpy.ndarray): Targets for all data samples, with each element is in range of ``0`` to ``class_num-1``.
+        data_indices (dict): Dict of ``client_id: [data indices]``.
+        class_num (int, optional): Total number of classes. If set to ``None``, then ``class_num = max(targets) + 1``.
+        verbose (bool, optional): Whether print data partition report in screen. Default as ``True``.
+        file (str, optional): Output file name of data partition report. If ``None``, then no output in file. Default as ``None``.
+
+    Returns:
+        pd.DataFrame
+
+    """
+    if not isinstance(targets, np.ndarray):
+        targets = np.array(targets)
+
+    if not class_num:
+        class_num = max(targets) + 1
+
+    sorted_cid = sorted(data_indices.keys())  # sort client id in ascending order
+
+    stats_rows = []
+    for client_id in sorted_cid:
+        indices = data_indices[client_id]
+        client_targets = targets[indices]
+        client_sample_num = len(indices)  # total number of samples of current client
+        client_target_cnt = Counter(client_targets)  # { cls1: num1, cls2: num2, ... }
+        cur_client_stat = {"cid": client_id}
+        for cls in range(class_num):
+            cur_client_stat[f"class-{cls}"] = (
+                client_target_cnt[cls] if cls in client_target_cnt else 0
+            )
+        cur_client_stat["TotalAmount"] = client_sample_num
+        stats_rows.append(cur_client_stat)
+
+    stats_df = pd.DataFrame(stats_rows)
+    if file is not None:
+        stats_df.to_csv(file, header=True, index=False)
+    if verbose:
+        print("Class sample statistics:")
+        print(stats_df)
+
+    return stats_df
 
 
 class NoisyDataset(Dataset):
@@ -41,26 +96,32 @@ class NoisyDataset(Dataset):
         self.train = train
         self.transform = transform
         self.folder_data = folder_data
+        self.label_space = list(set(labels))
 
         if self.folder_data is False:
             shape = data[0].shape
             ndim = len(shape)
-            if ndim == 2:
+            if ndim == 1:
+                self.mode = None
+            elif ndim == 2:
                 self.mode = "L"  # MNIST
             elif ndim == 3 and shape[-1] == 3:
                 self.mode = "RGB"  # CIFAR10 & CIFAR100 & SVHN
 
     def __getitem__(self, index):
-        if self.folder_data is False:
+        if self.folder_data is False and self.mode is not None:
             # CIFAR10 & CIFAR100 & SVHN & MNIST
             img, label = self.data[index], self.labels[index]
             img = Image.fromarray(img, mode=self.mode)
+        elif self.folder_data is False and self.mode is None:
+            img, label = self.data[index], self.labels[index]
         else:
-            # clothing1m data
+            # clothing1m & webvision data
             img_path, label = self.data[index], self.labels[index]
             img = Image.open(img_path).convert("RGB")
 
-        img = self.transform(img)
+        if self.transform is not None:
+            img = self.transform(img)
 
         if self.train:
             noisy_label = self.noisy_labels[index]
@@ -73,32 +134,52 @@ class NoisyDataset(Dataset):
 
 
 def FedNLL_name(
-    dataset, globalize, partition, num_clients=10, noise_mode="clean", **kw
+    dataset, globalize=True, partition="iid", num_clients=10, noise_mode="clean", **kw
 ):
-    if noise_mode == "clean":
-        kw["noise_ratio"] = 0.0
-
     prefix = "fedNLL"
-    if partition == "noniid-#label":
-        partition_param = f"{kw['major_classes_num']}"
-    elif partition == "noniid-quantity":
-        partition_param = f"{kw['dir_alpha']}"
-    elif partition == "noniid-labeldir":
-        partition_param = f"{kw['dir_alpha']:.2f}_{kw['min_require_size']}"
-    else:
-        # IID
-        partition_param = ""
-    partition_setting = f"{num_clients}_{partition}_{partition_param}"
-    noise_setting = ""
-    if noise_mode != "real":
-        if globalize is False:
-            noise_param = f"local_{noise_mode}_min_{kw['min_noise_ratio']:.2f}_max_{kw['max_noise_ratio']:.2f}"
+    if dataset != "synthetic":
+        if noise_mode == "clean":
+            kw["noise_ratio"] = 0.0
+
+        if partition == "noniid-#label":
+            partition_param = f"{kw['major_classes_num']}"
+        elif partition == "noniid-quantity":
+            partition_param = f"{kw['dir_alpha']}"
+        elif partition == "noniid-labeldir":
+            partition_param = f"{kw['dir_alpha']:.2f}_{kw['min_require_size']}"
         else:
-            noise_param = f"global_{noise_mode}_{kw['noise_ratio']:.2f}"  # if noise_ratio is a float number
+            # IID
+            partition_param = ""
+        partition_setting = f"{num_clients}_{partition}_{partition_param}"
+        # if kw["personalize"]:
+        if kw.get("personalize", False):
+            partition_setting += "_personalize"
+
+        noise_setting = ""
+        if noise_mode != "real":
+            if globalize is False:
+                noise_param = f"local_{noise_mode}_min_{kw['min_noise_ratio']:.2f}_max_{kw['max_noise_ratio']:.2f}"
+            else:
+                noise_param = f"global_{noise_mode}_{kw['noise_ratio']:.2f}"  # if noise_ratio is a float number
+        else:
+            if dataset == "clothing1m":
+                noise_param = f"{noise_mode}_{kw['num_samples']}"
+            elif dataset == "webvision":
+                noise_param = f"{noise_mode}"
+        setting = f"{partition_setting}_{noise_param}"
+
     else:
-        if dataset == "clothing1m":
-            noise_param = f"{noise_mode}_{kw['num_samples']}"
-    setting = f"{partition_setting}_{noise_param}"
+        synthetic_setting = f"{kw['feature_dim']}_{kw['use_bias']}_{kw['num_samples']}_{kw['num_test_samples']}"
+
+        partition_param = f"{kw['init_mu']:.2f}_{kw['init_sigma']:.2f}"
+        balance_param = f"balance={kw['balance']}"
+        if not kw["balance"]:
+            balance_param += f"_{kw['dir_alpha']:.2f}_{kw['min_require_size']}"
+        partition_setting = (
+            f"{num_clients}_{partition}_{partition_param}_{balance_param}"
+        )
+        setting = f"{partition_setting}_{synthetic_setting}"
+
     return f"{prefix}_{dataset}_{setting}"
 
 

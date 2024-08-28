@@ -39,14 +39,15 @@ class FedNLLMNIST(NLLMNIST, FedNLLScene):
         out_dir: str,
         num_clients: int,
         globalize: bool,
-        noise_mode: str = 'clean',
-        partition: str = 'iid',
+        noise_mode: str = "clean",
+        partition: str = "iid",
         dir_alpha: float = 0.6,
         major_classes_num: int = -1,
         noise_ratio: float = 0.0,
         min_noise_ratio: float = 0.0,
         max_noise_ratio: float = 1.0,
         min_require_size: Optional[int] = 10,
+        personalize: bool = False,
     ):
         NLLMNIST.__init__(self, root_dir, noise_mode, out_dir)
         FedNLLScene.__init__(
@@ -63,4 +64,5 @@ class FedNLLMNIST(NLLMNIST, FedNLLScene):
             min_noise_ratio,
             max_noise_ratio,
             min_require_size,
+            personalize=personalize,
         )

@@ -29,7 +29,7 @@ def read_fednll_args():
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--lr", type=float, default=0.01)
-    parser.add_argument("--weight_decay", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=5e-4)
     parser.add_argument("--momentum", type=float, default=0.9)
 
     # ==== FedNLL data args ====

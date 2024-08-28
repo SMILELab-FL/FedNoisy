@@ -8,12 +8,18 @@ from torchnet.meter import AUCMeter
 
 from typing import Dict, Tuple, List, Optional
 
-from fednoisy.data import CLASS_NUM, TRAIN_SAMPLE_NUM, TEST_SAMPLE_NUM
+from fednoisy.data import (
+    CLASS_NUM,
+    TRAIN_SAMPLE_NUM,
+    TEST_SAMPLE_NUM,
+)
 from fednoisy import visual
 from fednoisy.data.NLLData import functional as F
+from fednoisy.data.NLLData.BaseNLL import NLLBase
+from fednoisy.utils.misc import make_dirs
 
 
-class CentrNLLWebVision(object):
+class NLLWebVision(NLLBase):
     """
     Read raw train & test & val data from root_dir, add root_path to all image paths, save them into local files:
 
@@ -44,9 +50,12 @@ class CentrNLLWebVision(object):
     """
 
     dataset_name = "webvision"
-    trainset_filename = "webvision-trainset.pt"
-    testset_filename = "webvision-testset.pt"
-    valset_filename = "webvision-valset.pt"
+    num_classes = CLASS_NUM[dataset_name]
+    # train_sample_num = TRAIN_SAMPLE_NUM[dataset_name]
+    # test_sample_num = TEST_SAMPLE_NUM[dataset_name]
+    trainset_filename = f"{dataset_name}-trainset.pt"
+    testset_filename = f"{dataset_name}-testset.pt"
+    valset_filename = f"{dataset_name}-valset.pt"
 
     def __init__(
         self, root_dir: str, imagenet_root_dir: str, out_dir: str, num_classes: int = 50
@@ -96,12 +105,13 @@ class CentrNLLWebVision(object):
         """
         if os.path.exists(self.valset_path):
             entry = torch.load(self.valset_path)
-            val_imgs = entry["val_imgs"]
-            val_labels = entry["val_labels"]
-            imagenet_val_data = entry["imagenet_val_data"]
+            val_imgs = entry["data"]
+            val_labels = entry["labels"]
+            imagenet_val_data = entry["imagenet_data"]
+            imagenet_val_labels = entry["imagenet_labels"]
         else:
             # make validation data of WebVision1.0
-            val_labels = {}
+            val_labels = []
             val_imgs = []
             with open(os.path.join(self.root_dir, "info/val_filelist.txt"), "r") as f:
                 lines = f.readlines()
@@ -112,9 +122,10 @@ class CentrNLLWebVision(object):
                 target = int(target)
                 if target < self.num_classes:
                     val_imgs.append(img_path)
-                    val_labels[img_path] = target
+                    val_labels.append(target)
             # make validation data of ImageNet
             imagenet_val_data = []
+            imagenet_val_labels = []
             class_names = [
                 x[0] for x in sorted(self.class_to_idx.items(), key=lambda x: x[1])
             ]
@@ -127,12 +138,15 @@ class CentrNLLWebVision(object):
                     img_path = os.path.join(
                         self.imagenet_root_dir, "val", class_name, img
                     )
-                    imagenet_val_data.append([img_path, cls_idx])
+                    # imagenet_val_data.append([img_path, cls_idx])
+                    imagenet_val_data.append(img_path)
+                    imagenet_val_labels.append(cls_idx)
 
-        self.val_imgs = val_imgs
+        self.val_data = val_imgs
         self.val_labels = val_labels
         self.imagenet_val_data = imagenet_val_data
-        print(f"{self.dataset_name} valset and ImageNet valset is loaded.")
+        self.imagenet_val_labels = imagenet_val_labels
+        print(f"WebVision1.0 valset and ImageNet valset is loaded.")
         if save is True:
             self.save_valset()
 
@@ -147,11 +161,11 @@ class CentrNLLWebVision(object):
         """
         if os.path.exists(self.trainset_path):
             entry = torch.load(self.trainset_path)
-            train_imgs = entry["train_imgs"]
-            train_labels = entry["train_labels"]
+            train_imgs = entry["data"]
+            train_labels = entry["labels"]
 
         else:
-            train_labels = {}
+            train_labels = []
             train_imgs = []
             with open(
                 os.path.join(self.root_dir, "info/train_filelist_google.txt"), "r"
@@ -163,9 +177,9 @@ class CentrNLLWebVision(object):
                 target = int(target)
                 if target < self.num_classes:
                     train_imgs.append(img_path)
-                    train_labels[img_path] = target
+                    train_labels.append(target)
 
-        self.train_imgs = train_imgs
+        self.train_data = train_imgs
         self.train_labels = train_labels
         print(f"{self.dataset_name} trainset is loaded.")
         if save is True:
@@ -180,15 +194,14 @@ class CentrNLLWebVision(object):
     def save_trainset(self) -> None:
         if not os.path.exists(self.trainset_path):
             trainset_dict = {
-                "train_imgs": self.train_imgs,
-                "train_labels": self.train_labels,
+                "data": self.train_data,
+                "labels": self.train_labels,
                 "synsets": self.synsets,
                 "class_to_idx": self.class_to_idx,
             }
             torch.save(trainset_dict, self.trainset_path)
             print(
-                f"Train set saved to {self.trainset_path}, "
-                f"with keys 'train_imgs', 'train_labels', 'synsets', 'class_to_idx'."
+                f"Train set saved to {self.trainset_path}, with keys {list(trainset_dict.keys())}."
             )
         else:
             print(f"Train set file {self.trainset_path} already exists.")
@@ -196,29 +209,28 @@ class CentrNLLWebVision(object):
     def save_valset(self) -> None:
         if not os.path.exists(self.valset_path):
             valset_dict = {
-                "val_imgs": self.val_imgs,
-                "val_labels": self.val_labels,
-                "imagenet_val_data": self.imagenet_val_data,
+                "data": self.val_data,
+                "labels": self.val_labels,
+                "imagenet_data": self.imagenet_val_data,
+                "imagenet_labels": self.imagenet_val_labels,
                 "synsets": self.synsets,
                 "class_to_idx": self.class_to_idx,
             }
             torch.save(valset_dict, self.valset_path)
             print(
-                f"Val set saved to {self.valset_path}, "
-                f"with keys 'val_imgs', 'val_labels', 'imagenet_val_data', 'synsets', "
-                f"'class_to_idx'."
+                f"Val set saved to {self.valset_path},  with keys {list(valset_dict.keys())}"
             )
         else:
             print(f"Val set file {self.valset_path} already exists.")
 
-    def __str__(self):
-        return f"centralized_{self.dataset_name}_{self.noise_mode}"
+    # def __str__(self):
+    #     return f"centralized_{self.dataset_name}_{self.noise_mode}"
 
 
-if __name__ == "__main__":
-    centr_webvision = CentrNLLWebVision(
-        root_dir="/Users/liangsiqi/Downloads/WebVision1.0",
-        out_dir="/Users/liangsiqi/Documents/centrNLLdata/webvision",
-        num_classes=50,
-    )
-    print(centr_webvision)
+# if __name__ == "__main__":
+#     centr_webvision = CentrNLLWebVision(
+#         root_dir="/Users/liangsiqi/Downloads/WebVision1.0",
+#         out_dir="/Users/liangsiqi/Documents/centrNLLdata/webvision",
+#         num_classes=50,
+#     )
+#     print(centr_webvision)

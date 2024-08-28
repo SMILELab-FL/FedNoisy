@@ -107,6 +107,7 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
         data_size = len(train_loader.dataset)
 
         for epoch in range(self.epochs):
+            self._model.train()  # TODO
             self._LOGGER.info(
                 f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]"
             )
@@ -136,6 +137,8 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
             self.device,
             multimodel=multimodel,
         )
+
+        # TODO: add ImageNet evaluation code
 
         return loss_, acc_
 

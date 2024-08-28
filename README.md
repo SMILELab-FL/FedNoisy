@@ -138,6 +138,15 @@ Raw dataset should be downloaded in to local folder before data-build process. T
 │   │           ├── t10k-images-idx3-ubyte
 │   │           ...
 │   │           └── train-labels-idx1-ubyte.gz
+│   ├── webvision1.0/
+│   │   ├── info
+│   │   ├── google
+│   │   ├── README.txt
+│   │   └── val_images_256
+│   ├── imagenet_data/
+│   │   └── ILSVRC2012
+│   │       ├── train
+│   │       └── val
 │   ├── clothing1M/
 │   │   ├── category_names_chn.txt
 │   │   ├── category_names_eng.txt
@@ -182,6 +191,8 @@ Raw dataset should be downloaded in to local folder before data-build process. T
 
 - To download __[Clothing1M](https://github.com/Cysu/noisy_label)__, please contact *tong.xiao.work[at]gmail[dot]com* to get the download link. Untar the images and unzip the annotations under `rawdata/clothing1M`.
 
+- To download __[WebVision1.0](https://data.vision.ee.ethz.ch/cvl/webvision/download.html)__, only use "Resized Images (small version)". Unzip the data under `rawdata/webvision1.0`.
+
 
 
 ### Build dataset with noisy label
@@ -216,10 +227,13 @@ $ python build_dataset_fed.py --dataset cifar10 \
   - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode sym` for localized symmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
   - `--min_noise_ratio 0.3 --max_noise_ratio 0.5 --noise_mode asym` for localized asymmetric noise $\varepsilon_k \sim \mathcal{U}(0.3, 0.5)$
   
-- Real noise (only works for Clothing1M): `--dataset clothing1m --globalize --noise_mode real --num_sampels 64000`
+- Real noise:
 
-  - `--num_samples` is for specifying number of training samples used for Clothing1M, the default is 64000
-
+  - `--dataset clothing1m` for Clothing1M, need to specify ` --num_sampels` as number of training samples used for Clothing1M, the default is 64000
+  - `--dataset webvision` for WebVision1.0, need to specify `--raw_imagenet_dir` for ImageNet validation set raw data dir
+  
+  > Once `--dataset` is set with `clothing1m` or `webvision`, the arguement will automatically set `--globalize --noise_mode real` for real world noise.
+  
   
 
 
@@ -244,6 +258,12 @@ $ python build_dataset_fed.py --dataset cifar10 \
   - Non-IID quantity skew: `--partition noniid-quantity --num_clients 10 --dir_alpha 0.1`
   - Non-IID Dirichlet-based label skew: `--partition noniid-labeldir --dir_alpha 0.1 --num_clients 10`
   - Non-IID quantity-based label skew: `--partition noniid-#label --major_classes_num 5 --num_clients 10`
+- WebVision: `--dataset webvision`
+  - IID: `--partition iid --num_clients 10`
+  - Non-IID quantity skew: `--partition noniid-quantity --num_clients 10 --dir_alpha 0.1`
+  - Non-IID Dirichlet-based label skew: `--partition noniid-labeldir --dir_alpha 0.6 --num_clients 10`
+  - Non-IID quantity-based label skew: `--partition noniid-#label --major_classes_num 20 --num_clients 10`
+
 
 
 
@@ -544,6 +564,7 @@ For more scripts, please check [scripts](./scripts/) folder.
 ### Datasets
 
 - [ ] Include mini-ImageNet (synthetic noise)
+- [x] Include WebVision (real-world noise)
 - [ ] Include Food-101N (real-world noise)
 - [ ] Include ANIMAL-10N (real-world noise)
 

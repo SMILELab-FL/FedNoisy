@@ -55,6 +55,10 @@ if args.dataset == "clothing1m":
     args.noise_mode = "real"
     args.globalize = True
     args.noise_ratio = 0.39
+elif args.dataset == "webvision":
+    args.noise_mode = "real"
+    args.globalize = True
+    args.noise_ratio = 0.20
 
 nll_name = nllF.FedNLL_name(**vars(args))
 exp_name = make_exp_name("fedavg", args)

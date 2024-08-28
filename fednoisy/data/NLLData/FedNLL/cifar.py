@@ -99,6 +99,7 @@ class FedNLLCIFAR10(NLLCIFAR10, FedNLLScene):
         min_noise_ratio: float = 0.0,
         max_noise_ratio: float = 1.0,
         min_require_size: Optional[int] = 10,
+        personalize: bool = False,
     ):
         NLLCIFAR10.__init__(self, root_dir, noise_mode, out_dir)
         FedNLLScene.__init__(
@@ -115,6 +116,7 @@ class FedNLLCIFAR10(NLLCIFAR10, FedNLLScene):
             min_noise_ratio,
             max_noise_ratio,
             min_require_size,
+            personalize=personalize,
         )
 
 
@@ -143,6 +145,7 @@ class FedNLLCIFAR100(NLLCIFAR100, FedNLLScene):
         min_noise_ratio: float = 0.0,
         max_noise_ratio: float = 1.0,
         min_require_size: Optional[int] = 10,
+        personalize: bool = False,
     ):
         NLLCIFAR100.__init__(self, root_dir, noise_mode, out_dir)
         FedNLLScene.__init__(
@@ -160,4 +163,5 @@ class FedNLLCIFAR100(NLLCIFAR100, FedNLLScene):
             max_noise_ratio,
             min_require_size,
             CIFAR100Partitioner,
+            personalize=personalize,
         )

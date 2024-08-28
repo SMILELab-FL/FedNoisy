@@ -9,12 +9,8 @@ from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
 
-from fedlab.contrib.algorithm.basic_client import SGDSerialClientTrainer
-from fedlab.core.client import PassiveClientManager
-from fedlab.core.network import DistNetwork
 
 from fedlab.contrib.dataset.basic_dataset import FedDataset
-from fedlab.utils.logger import Logger
 
 from fednoisy.data.NLLData import functional as nllF
 
@@ -32,12 +28,15 @@ class FedNLLDataset(FedDataset):
     """
 
     def __init__(self, args, train_preload=False, test_preload=False) -> None:
+        self.args = args
         nll_name = nllF.FedNLL_name(**vars(args))
         nll_filename = f"{nll_name}_seed_{args.seed}_setting.pt"
         nll_file_path = os.path.join(args.data_dir, nll_filename)
         self.nll_folder = os.path.join(args.data_dir, f"{nll_name}_seed_{args.seed}")
         self.train_preload = train_preload
         self.test_preload = test_preload
+        self.personalize = args.personalize
+
         if train_preload:
             self.train_datasets = {cid: None for cid in range(args.num_clients)}
             for cid in range(args.num_clients):
@@ -46,12 +45,23 @@ class FedNLLDataset(FedDataset):
                 )
             print(f"Client train datasets preloaded.")
         if test_preload:
-            self.test_dataset = torch.load(
-                os.path.join(self.nll_folder, "test-data.pkl")
-            )
+            self.test_dataset = {
+                -1: torch.load(os.path.join(self.nll_folder, "test-data.pkl"))
+            }  # use key -1 for global test set
+            if args.dataset == "webvision":
+                self.test_dataset[-2] = torch.load(
+                    os.path.join(self.nll_folder, "imagenet-test-data.pkl")
+                )  # use key -2 for global imagenet val set
+            if self.personalize:
+                # load local test set
+                for cid in range(args.num_clients):
+                    self.test_dataset[cid] = torch.load(
+                        os.path.join(self.nll_folder, f"test-data{cid}.pkl")
+                    )  # load local test set
+
             print(f"Test datasets preloaded.")
 
-    def get_dataset(self, cid=None, train=True):
+    def get_dataset(self, cid=None, train=True, imagenet=False):
         if train:
             if self.train_preload:
                 dataset = self.train_datasets[cid]
@@ -61,14 +71,31 @@ class FedNLLDataset(FedDataset):
                 )
         else:
             if self.test_preload:
-                dataset = self.test_dataset
+                if imagenet:
+                    dataset = self.test_dataset[-2]
+                else:
+                    dataset = self.test_dataset[-1]
             else:
-                dataset = torch.load(os.path.join(self.nll_folder, "test-data.pkl"))
+                if imagenet:
+                    dataset = torch.load(
+                        os.path.join(self.nll_folder, "imagenet-test-data.pkl")
+                    )
+                else:
+                    dataset = torch.load(os.path.join(self.nll_folder, "test-data.pkl"))
+
         return dataset
 
-    def get_dataloader(self, cid=None, train=True, batch_size=64, num_workers=4):
+    def get_dataloader(
+        self,
+        cid=-1,
+        train=True,
+        batch_size=64,
+        num_workers=4,
+        return_label_space=False,
+        imagenet=False,
+    ):
         # if train:
-        dataset = self.get_dataset(cid, train)
+        dataset = self.get_dataset(cid, train, imagenet=imagenet)
         if train:
             shuffle = True
         else:
@@ -81,4 +108,7 @@ class FedNLLDataset(FedDataset):
             num_workers=num_workers,
             pin_memory=True,
         )
+        if return_label_space:
+            return data_loader, dataset.label_space
+
         return data_loader

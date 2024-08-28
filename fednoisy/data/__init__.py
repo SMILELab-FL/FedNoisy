@@ -62,6 +62,15 @@ TRAIN_TRANSFORM = {
             transforms.Normalize(*NORM_VALUES["clothing1m"]),
         ]
     ),
+    "webvision": transforms.Compose(
+        [
+            transforms.Resize(320),
+            transforms.RandomResizedCrop(299),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(*NORM_VALUES["webvision"]),
+        ]
+    ),
 }
 
 TEST_TRANSFORM = {
@@ -95,6 +104,14 @@ TEST_TRANSFORM = {
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             transforms.Normalize(*NORM_VALUES["clothing1m"]),
+        ]
+    ),
+    "webvision": transforms.Compose(
+        [
+            transforms.Resize(320),
+            transforms.CenterCrop(299),
+            transforms.ToTensor(),
+            transforms.Normalize(*NORM_VALUES["webvision"]),
         ]
     ),
 }

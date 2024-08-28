@@ -44,6 +44,7 @@ Federated setting:
     - Non-IID-xxx
     - Non-IID-xxx
 """
+
 import argparse
 
 # from progress.bar import Bar as Bar
@@ -58,7 +59,10 @@ from fednoisy.data.NLLData.FedNLL import (
     FedNLLMNIST,
     FedNLLSVHN,
     FedNLLClothing1M,
+    FedNLLWebVision,
+    FedNLLSynthetic,
 )
+from fednoisy.data.NLLData import functional as nllF
 
 
 def read_args():
@@ -74,8 +78,24 @@ def read_args():
         "--partition",
         default="iid",
         type=str,
-        choices=["iid", "noniid-#label", "noniid-labeldir", "noniid-quantity"],
+        choices=[
+            "iid",
+            "noniid",
+            "noniid-#label",
+            "noniid-labeldir",
+            "noniid-quantity",
+        ],
         help="Data partition scheme for federated setting.",
+    )
+    parser.add_argument(
+        "--personalize",
+        action="store_true",
+        help="Whether use personalized local test set for each client. If True, then each client's class ratio of local test set is same as the training set",
+    )
+    parser.add_argument(
+        "--balance",
+        action="store_true",
+        help="whether use balance partition for Synthetic dataset.",
     )
     parser.add_argument(
         "--num_clients",
@@ -140,7 +160,25 @@ def read_args():
         "--num_samples",
         default=32 * 2 * 1000,
         type=int,
-        help="Number of samples used for Clothing1M training. Defaults as 64000.",
+        help="Number of samples used for Clothing1M/Synthetic data training. Defaults as 64000.",
+    )
+
+    parser.add_argument(
+        "--num_test_samples",
+        default=1000,
+        type=int,
+        help="Number of test samples for synthetic dataset.",
+    )
+    parser.add_argument(
+        "--feature_dim",
+        type=int,
+        default=100,
+        help="Feature dimension for synthetic dataset.",
+    )
+    parser.add_argument(
+        "--use_bias",
+        action="store_true",
+        help="Whether to use bias in synthetic data generation. If True, Y = Xw + b + ε; otherwise Y = Xw + ε.",
     )
 
     # ----Dataset path options----
@@ -148,13 +186,27 @@ def read_args():
         "--dataset",
         default="cifar10",
         type=str,
-        choices=["mnist", "cifar10", "cifar100", "svhn", "clothing1m", "webvision"],
+        choices=[
+            "mnist",
+            "cifar10",
+            "cifar100",
+            "svhn",
+            "clothing1m",
+            "webvision",
+            "synthetic",
+        ],
         help="Dataset for experiment. Current support: ['mnist', 'cifar10', "
-        "'cifar100', 'svhn', 'clothing1m', 'webvision']",
+        "'cifar100', 'svhn', 'clothing1m', 'webvision', 'synthetic]",
     )
     parser.add_argument(
         "--raw_data_dir",
         default="../data",
+        type=str,
+        help="Directory for raw dataset download",
+    )
+    parser.add_argument(
+        "--raw_imagenet_dir",
+        default="../rawdata/imagenet",
         type=str,
         help="Directory for raw dataset download",
     )
@@ -242,9 +294,11 @@ if __name__ == "__main__":
             max_noise_ratio=args.max_noise_ratio,
             root_dir=args.raw_data_dir,
             out_dir=args.data_dir,
+            personalize=args.personalize,
         )
         nll_cifar10.create_nll_scene(seed=args.seed)
         nll_cifar10.save_nll_scene()
+
     elif args.dataset == "cifar100":
         nll_cifar100 = FedNLLCIFAR100(
             globalize=args.globalize,
@@ -258,9 +312,11 @@ if __name__ == "__main__":
             max_noise_ratio=args.max_noise_ratio,
             root_dir=args.raw_data_dir,
             out_dir=args.data_dir,
+            personalize=args.personalize,
         )
         nll_cifar100.create_nll_scene(seed=args.seed)
         nll_cifar100.save_nll_scene()
+
     elif args.dataset == "mnist":
         nll_mnist = FedNLLMNIST(
             globalize=args.globalize,
@@ -274,6 +330,7 @@ if __name__ == "__main__":
             max_noise_ratio=args.max_noise_ratio,
             root_dir=args.raw_data_dir,
             out_dir=args.data_dir,
+            personalize=args.personalize,
         )
         nll_mnist.create_nll_scene(seed=args.seed)
         nll_mnist.save_nll_scene()
@@ -291,11 +348,15 @@ if __name__ == "__main__":
             max_noise_ratio=args.max_noise_ratio,
             root_dir=args.raw_data_dir,
             out_dir=args.data_dir,
+            personalize=args.personalize,
         )
         nll_svhn.create_nll_scene(seed=args.seed)
         nll_svhn.save_nll_scene()
 
     elif args.dataset == "clothing1m":
+        args.noise_mode = "real"
+        args.globalize = True
+        args.noise_ratio = 0.39
         nll_clothing1m = FedNLLClothing1M(
             root_dir=args.raw_data_dir,
             out_dir=args.data_dir,
@@ -307,6 +368,43 @@ if __name__ == "__main__":
         )
         nll_clothing1m.create_nll_scene(seed=args.seed)
         nll_clothing1m.save_nll_scene()
+
+    elif args.dataset == "webvision":
+        args.noise_mode = "real"
+        args.globalize = True
+        args.noise_ratio = 0.20
+        nll_webvision = FedNLLWebVision(
+            root_dir=args.raw_data_dir,
+            imagenet_root_dir=args.raw_imagenet_dir,
+            out_dir=args.data_dir,
+            partition=args.partition,
+            num_clients=args.num_clients,
+            dir_alpha=args.dir_alpha,
+            major_classes_num=args.major_classes_num,
+        )
+        nll_webvision.create_nll_scene(seed=args.seed)
+        nll_webvision.save_nll_scene()
+
+    elif args.dataset == "synthetic":
+        nll_synthetic = FedNLLSynthetic(
+            out_dir=args.data_dir,
+            num_clients=args.num_clients,
+            init_mu=0,
+            init_sigma=1,
+            partition=args.partition,
+            balance=args.balance,
+            train_sample_num=args.num_samples,
+            test_sample_num=args.num_test_samples,
+            feature_dim=args.feature_dim,
+            use_bias=args.use_bias,
+            dir_alpha=args.dir_alpha,
+        )
+        args.init_mu = 0
+        args.init_sigma = 1
+        nll_synthetic.create_nll_scene(seed=args.seed)
+        nll_synthetic.save_nll_scene()
+        nll_name = nllF.FedNLL_name(**vars(args))
+        print(f"{nll_name}")
 
     else:
         raise ValueError(f"dataset='{args.dataset}' is not supported!")

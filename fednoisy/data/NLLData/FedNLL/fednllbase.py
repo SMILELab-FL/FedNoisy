@@ -46,6 +46,7 @@ class FedNLLScene(NLLBase):
         max_noise_ratio: float = 1.0,
         min_require_size: Optional[int] = 10,
         partitioner: Optional[DataPartitioner] = VisionPartitioner,
+        personalize: bool = False,
     ) -> None:
         NLLBase.__init__(self, root_dir, noise_mode, out_dir)
 
@@ -95,13 +96,22 @@ class FedNLLScene(NLLBase):
         self.dir_alpha = dir_alpha
         self.major_classes_num = major_classes_num
         self.partitioner = partitioner
+        self.personalize = personalize
 
     def create_nll_scene(self, seed: int = 0):
         self.setup_seed(seed)
         self.nll_scene_filename = f"{self}_seed_{seed}_setting.pt"
         self.nll_scene_file_path = os.path.join(self.out_dir, self.nll_scene_filename)
         self.nll_scene_folder = os.path.join(self.out_dir, f"{self}_seed_{seed}")
+
+        # partition train set for each client
         client_dict = self._perform_partition()
+        self.partition_report = F.partition_report(
+            self.train_labels,
+            client_dict,
+            class_num=CLASS_NUM[self.dataset_name],
+            verbose=False,
+        )  # pd.DataFrame
         for cid in client_dict:
             client_dict[cid] = client_dict[cid].tolist()  # change array([...]) to [...]
         self.client_dict = client_dict
@@ -113,11 +123,20 @@ class FedNLLScene(NLLBase):
         )
         print(f"True noisy ratio is calculated: {self.true_noise_ratio}")
 
+        # partition test set for each client if personalize is True
+        if self.personalize:
+            self.test_client_dict = self._perform_test_partition()
+            self.test_data_dict = F.split_data(self.test_client_dict, self.test_data)
+            self.test_labels_dict = F.split_data(
+                self.test_client_dict, self.test_labels
+            )
+
     def save_nll_scene(self):
         fednll_scene = {
             "dataset": self.dataset_name,
             "client_dict": self.client_dict,
             "partition": self.partition,
+            "personalize": self.personalize,
             "dir_alpha": self.dir_alpha,
             "num_clients": self.num_clients,
             "major_classes_num": self.major_classes_num,
@@ -128,6 +147,8 @@ class FedNLLScene(NLLBase):
             "noise_ratio": self.noise_ratio,
             "noisy_labels": self.noisy_labels_dict,
         }
+        if self.personalize:
+            fednll_scene["test_client_dict"] = self.test_client_dict
 
         torch.save(fednll_scene, self.nll_scene_file_path)
         print(
@@ -151,6 +172,7 @@ class FedNLLScene(NLLBase):
             print(f"Client {cid} local train set saved to {path}")
 
         # test split save to local
+        # save global testset
         test_transform = TEST_TRANSFORM[self.dataset_name]
         test_dataset = NoisyDataset(
             data=self.test_data,
@@ -160,7 +182,19 @@ class FedNLLScene(NLLBase):
         )
         path = os.path.join(self.nll_scene_folder, "test-data.pkl")
         torch.save(test_dataset, path)
-        print(f"Test set saved to {path}")
+        print(f"Global test set saved to {path}")
+        # save local test set
+        if self.personalize:
+            for cid in range(self.num_clients):
+                client_test_dataset = NoisyDataset(
+                    data=self.test_data_dict[cid],
+                    labels=self.test_labels_dict[cid],
+                    train=False,
+                    transform=test_transform,
+                )
+                path = os.path.join(self.nll_scene_folder, f"test-data{cid}.pkl")
+                torch.save(client_test_dataset, path)
+                print(f"Client {cid} local test set saved to {path}")
 
     def _perform_partition(self):
         if self.partition == "noniid-quantity":
@@ -179,6 +213,43 @@ class FedNLLScene(NLLBase):
         )
 
         return partitioner.client_dict
+
+    def _perform_test_partition(self):
+        num_classes = CLASS_NUM[self.dataset_name]
+        # calculate the class ratio for each client
+        stats_mat = self.partition_report.values[
+            :, 1 : num_classes + 1
+        ]  # num_clients x num_classes, each entry is corresponding train sample number
+        # divide each entry by each column's sum to get partition ratio in each class
+        stats_ratio_mat = stats_mat / np.sum(stats_mat, axis=0)
+        # collect test sample index for each class
+        test_idx_per_class = {}
+        np_test_labels = np.array(self.test_labels)
+        for k in range(num_classes):
+            idx_k = np.where(np_test_labels == k)[0]
+            # shuffle test sample index order for each class
+            np.random.shuffle(idx_k)
+            test_idx_per_class[k] = idx_k  # .tolist()
+        sample_num_per_class = np.array(
+            [len(test_idx_per_class[k]) for k in range(num_classes)]
+        )
+        sample_num_per_client_class = (
+            sample_num_per_class * stats_ratio_mat
+        )  # num_clients x num_classes, each entry is corresponding test sample number
+
+        # split test sample index according to client class ratio 'stats_ratio_mat'
+        test_client_dict = {cid: [] for cid in range(self.num_clients)}
+        for k in range(num_classes):
+            k_sample_num_cumsum = np.around(
+                np.cumsum(sample_num_per_client_class[:, k])
+            ).astype(int)
+            k_client_dict = partF.split_indices(
+                k_sample_num_cumsum, test_idx_per_class[k]
+            )
+            for cid in range(self.num_clients):
+                test_client_dict[cid].extend(k_client_dict[cid].tolist())
+
+        return test_client_dict
 
     def _gen_noisy_labels(self, client_dict):
         if os.path.exists(self.nll_scene_file_path):
@@ -236,7 +307,10 @@ class FedNLLScene(NLLBase):
         else:
             # IID
             partition_param = ""
-        return f"{self.num_clients}_{self.partition}_{partition_param}"
+        partition_str = f"{self.num_clients}_{self.partition}_{partition_param}"
+        if self.personalize:
+            partition_str += "_personalize"
+        return partition_str
 
     @property
     def noise_setting(self):
