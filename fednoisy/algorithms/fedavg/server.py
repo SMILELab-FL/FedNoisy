@@ -227,7 +227,7 @@ class FedNoRoServerHandler(SyncServerHandler):
             )
 
             for cc in range(num_classes):
-                num[cid, cc] += local_class_num_cnt.get(cc, 0)
+                num[cid, cc] += local_class_num_cnt.get(cc, 1)   # to prevent nonexisted classes
                 cur_cc_idxs = np.where(cur_noisy_labels == cc)
                 metrics[cid, cc] += loss[cur_cc_idxs[0]].sum().item()
 
