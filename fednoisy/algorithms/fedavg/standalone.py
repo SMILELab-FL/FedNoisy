@@ -144,3 +144,77 @@ class FedAvgStandalone(StandalonePipeline):
                 self.max_acc = acc_
                 torch.save(self.handler._model.state_dict(), self.best_model_path)
                 self.handler._LOGGER.info(f"Best global model saved.")
+
+
+class FedNoRoStandalone(FedAvgStandalone):
+    def __init__(
+        self, handler, trainer, args, logger=None, save_best=False, save_last=True
+    ):
+        StandalonePipeline.__init__(self, handler, trainer)
+        self._LOGGER = Logger() if logger is None else logger
+        self.save_best = save_best
+        self.save_last = save_last
+        self.args = args
+        self.exp_name = make_exp_name("fednoro", args)
+        self.nll_name = nllF.FedNLL_name(**vars(args))
+        alg_name = make_alg_name(args)
+        self.out_path = os.path.join(
+            args.out_dir, self.nll_name, alg_name, self.exp_name
+        )
+        make_dirs(self.out_path)
+        self.record_file = os.path.join(self.out_path, "result_record.txt")
+        self.best_model_path = os.path.join(self.out_path, "best_global_model.pth")
+        self.last_model_path = os.path.join(self.out_path, "last_global_model.pth")
+
+        self.loss_hist = []
+        self.acc_hist = []
+        self.max_acc = 0
+
+        self.run_name = f"{self.nll_name}-{alg_name}-{self.exp_name}"
+        self.wb_run = wandb.init(
+            config=self.args, project=self.args.proj_name, name=self.run_name
+        )
+
+    def main(self):
+        # check existence of record file
+        if os.path.exists(self.record_file):
+            accs, _, _ = result_parser(self.record_file)
+            if len(accs) >= self.args.com_round:
+                self.handler._LOGGER.info(
+                    f"Experiment done! Result saved in {self.record_file}!"
+                )
+                return
+
+        while self.handler.if_stop is False:
+            # server side
+            sampled_clients = self.handler.sample_clients()
+            broadcast = self.handler.downlink_package
+
+            # client side
+            self.trainer.local_process(broadcast, sampled_clients, self.handler.round)
+            uploads = self.trainer.uplink_package
+
+            # server side
+            for pack in uploads:
+                self.handler.load(pack)
+
+            # evaluate
+            self.evaluate()
+
+            # justify noisy clients after warmup stage:
+            if self.handler.round == self.args.fednoro_warmup:
+                clean_clients, noisy_clients = self.handler.justify_noisy_client()
+                self.trainer.clean_clients = clean_clients
+                self.trainer.noisy_clients = noisy_clients
+
+        if self.save_last:
+            torch.save(
+                {
+                    "model": self.handler._model.state_dict(),
+                    "rounds": self.args.com_round,
+                },
+                self.last_model_path,
+            )
+
+        self.wb_run.log({"final_test_acc": np.mean(self.acc_hist[-10:])})
+        self.wb_run.finish()

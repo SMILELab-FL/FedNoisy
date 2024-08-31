@@ -28,10 +28,11 @@ from fednoisy.algorithms.fedavg.client import (
     FedNLLFedAvgMixupClientTrainer,
     FedNLLFedAvgCoteachingClientTrainer,
     FedNLLFedAvgDynamicBootstrappingClientTrainer,
+    FedNLLFedNoRoClientTrainer,
 )
-from fednoisy.algorithms.fedavg.server import FedAvgServerHandler
+from fednoisy.algorithms.fedavg.server import FedAvgServerHandler, FedNoRoServerHandler
 
-from fednoisy.algorithms.fedavg.standalone import FedAvgStandalone
+from fednoisy.algorithms.fedavg.standalone import FedAvgStandalone, FedNoRoStandalone
 from fednoisy.algorithms.fedavg.misc import read_fednll_args
 from fednoisy.data.dataset import FedNLLDataset
 from fednoisy.utils.misc import (
@@ -61,7 +62,11 @@ elif args.dataset == "webvision":
     args.noise_ratio = 0.20
 
 nll_name = nllF.FedNLL_name(**vars(args))
-exp_name = make_exp_name("fedavg", args)
+if args.fednoro:
+    alg = "fednoro"
+else:
+    alg = "fedavg"
+exp_name = make_exp_name(alg, args)
 alg_name = make_alg_name(args)
 cmp_out_dir = os.path.join(args.out_dir, nll_name, alg_name, exp_name)
 make_dirs(cmp_out_dir)
@@ -90,29 +95,40 @@ client_logger = Logger(
 )
 
 # ==== choose server handler and client trainer ====
-handler = FedAvgServerHandler(
-    model, args.com_round, args.sample_ratio, logger=server_logger, args=args
-)  # server
+# ++++++++ server init ++++++++
+if args.fednoro:
+    handler = FedNoRoServerHandler(
+        model, args.com_round, args.sample_ratio, logger=server_logger, args=args
+    )
+else:
+    handler = FedAvgServerHandler(
+        model, args.com_round, args.sample_ratio, logger=server_logger, args=args
+    )
 
+# ++++++++ client init ++++++++
 if args.mixup is True:
     # ---- FedAvg-Mixup ----
     trainer = FedNLLFedAvgMixupClientTrainer(
         model, args.num_clients, cuda=True, logger=client_logger, args=args
-    )  # client
+    )
 elif args.coteaching is True:
     # ---- FedAvg-Coteaching ----
     trainer = FedNLLFedAvgCoteachingClientTrainer(
         model, args.num_clients, cuda=True, logger=client_logger, args=args
-    )  # client
+    )
 elif args.dynboot is True:
     trainer = FedNLLFedAvgDynamicBootstrappingClientTrainer(
+        model, args.num_clients, cuda=True, logger=client_logger, args=args
+    )
+elif args.fednoro is True:
+    trainer = FedNLLFedNoRoClientTrainer(
         model, args.num_clients, cuda=True, logger=client_logger, args=args
     )
 else:
     # ---- FedAvg & FedAvg-RobustLoss ----
     trainer = FedNLLFedAvgClientTrainer(
         model, args.num_clients, cuda=True, logger=client_logger, args=args
-    )  # client
+    )
 
 # ==== server dataset ====
 handler_dataset = FedNLLDataset(args, test_preload=args.preload)
@@ -129,5 +145,8 @@ trainer.setup_optim(
 
 # ====  launch pipeline ====
 print(f"FedNLL scene: {nll_name}")
-pipeline = FedAvgStandalone(handler, trainer, args=args, save_best=args.save_best)
+if args.fednoro:
+    pipeline = FedNoRoStandalone(handler, trainer, args=args, save_best=args.save_best)
+else:
+    pipeline = FedAvgStandalone(handler, trainer, args=args, save_best=args.save_best)
 pipeline.main()

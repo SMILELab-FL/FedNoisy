@@ -240,6 +240,30 @@ def read_fednll_args():
         default=10,
         help="FedNoRo: Warmup round number, default: 10. Original paper uses 10 rounds for warmup for total 100 rounds training.",
     )
+    parser.add_argument(
+        "--fednoro_opt",
+        type=str,
+        default="sgd",
+        help="FedNoRo: Optimizer, default: 'sgd'. Original paper uses 10 rounds for warmup for total 100 rounds training.",
+    )
+    parser.add_argument(
+        "--fednoro_begin",
+        type=int,
+        default=10,
+        help="FedNoRo: sigmoid ramup begins, default: 10. Original paper begin from 10th round for sigmoid ramup begins for total 100 rounds training.",
+    )
+    parser.add_argument(
+        "--fednoro_end",
+        type=int,
+        default=50,
+        help="FedNoRo: sigmoid ramup ends, default: 50. Original paper ends at 10th round for sigmoid ramup begins for total 100 rounds training.",
+    )
+    parser.add_argument(
+        "--fednoro_a",
+        type=float,
+        default=0.8,
+        help="FedNoRo: a",
+    )
 
     # ----Path options----
     parser.add_argument(

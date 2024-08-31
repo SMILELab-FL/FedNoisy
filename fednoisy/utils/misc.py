@@ -122,6 +122,8 @@ def make_alg_name(args):
             alg_name = "FedAvg-Coteaching"
         elif args.dynboot is True:
             alg_name = "FedAvg-DynamicBootstrapping"
+        elif args.fednoro is True:
+            alg_name = "FedNoRo"
         else:
             alg_name = "FedAvg"
 
@@ -150,7 +152,13 @@ def make_exp_name(fed_alg_name="fedavg", args=None) -> str:
         elif args.dynboot is True:
             noisy_alg_name = f"dynboot=True-dynboot_mixup={args.dynboot_mixup}-dynboot_alpha={args.dynboot_alpha:.2f}-dynboot_bootbeta={args.dynboot_bootbeta}-dynboot_reg={args.dynboot_reg:.2f}"
 
-        other_name = f"com_round={args.com_round}-local_epochs={args.epochs}-sample_ratio={args.sample_ratio:.2f}-batch_size={args.batch_size}-seed={args.seed}"
+    elif fed_alg_name == "fednoro":
+        arch_name = f"arch={args.model}"
+        opt_name = f"-opt={args.fednoro_opt}-lr={args.lr:.4f}-momentum={args.momentum:.2f}-weight_decay={args.weight_decay:.5f}"
+        criterion_name = make_criterion_name(args)
+        noisy_alg_name = f"warmup={args.fednoro_warmup}-begin={args.fednoro_begin}-end={args.fednoro_end}-a={args.fednoro_a:.2f}"
+
+    other_name = f"com_round={args.com_round}-local_epochs={args.epochs}-sample_ratio={args.sample_ratio:.2f}-batch_size={args.batch_size}-seed={args.seed}"
 
     if noisy_alg_name is None:
         exp_name = "-".join(

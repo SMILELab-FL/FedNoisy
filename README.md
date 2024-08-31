@@ -275,22 +275,22 @@ $ python build_dataset_fed.py --dataset cifar10 \
 <table style="margin-left: auto; margin-right: auto;">
 <tbody>
 <tr>
-<td  rowspan="2"><strong>Federated Algorithm</strong></td>
-<td  colspan="2"><strong>Noisy Label Algorithm</strong></td>
-<td  rowspan="2"><strong>Paper</strong></td>
+<td rowspan="2"><strong>Federated Algorithm</strong></td>
+<td colspan="2"><strong>Noisy Label Algorithm</strong></td>
+<td rowspan="2"><strong>Paper</strong></td>
 </tr>
 <tr>
 <td><em>Category</em></td>
 <td><em>Method</em></td>
 </tr>
 <tr>
-<td  rowspan="8">FedAvg</td>
+<td rowspan="8">FedAvg</td>
 <td>Robust Regularizaiton</td>
 <td>Mixup</td>
 <td><a href="https://arxiv.org/abs/1710.09412" target="_blank">[2018 ICLR] Mixup: Beyond empirical risk minimization</a></td>
 </tr>
 <tr>
-<td  rowspan="3">RobustLoss Function</td>
+<td rowspan="3">RobustLoss Function</td>
 <td>SCE</td>
 <td><a href="https://openaccess.thecvf.com/content_ICCV_2019/papers/Wang_Symmetric_Cross_Entropy_for_Robust_Learning_With_Noisy_Labels_ICCV_2019_paper.pdf" target="_blank">[2019 ICCV] Symmetric Cross Entropy for Robust Learning with Noisy Labels</a></td>
 </tr>
@@ -303,7 +303,7 @@ $ python build_dataset_fed.py --dataset cifar10 \
 <td><a href="https://arxiv.org/abs/1712.09482" target="_blank">[2017 AAAI] Robust Loss Functions under Label Noise for Deep Neural Networks</a></td>
 </tr>
 <tr>
-<td  rowspan="3">Loss Adjustment</td>
+<td rowspan="3">Loss Adjustment</td>
 <td>M-DYR-H</td>
 <td><a href="http://proceedings.mlr.press/v97/arazo19a/arazo19a.pdf" target="_blank">[2019 ICML] Unsupervised Label Noise Modeling and Loss Correction</a></td>
 </tr>
@@ -320,8 +320,13 @@ $ python build_dataset_fed.py --dataset cifar10 \
 <td>Co-teaching</td>
 <td><a href="https://arxiv.org/abs/1804.06872" target="_blank">[2018 NeurIPS] Co-teaching: Robust Training of Deep Neural Networks with Extremely Noisy Labels</a></td>
 </tr>
+<tr>
+<td colspan="3">FedNoRo</td>
+<td colspan="1"><a href="https://www.ijcai.org/proceedings/2023/0492.pdf" target="_blank">[2023 IJCAI] FedNoRo: Towards Noise-Robust Federated Learning by Addressing Class Imbalance and Label Noise Heterogeneity</a></td>
+</tr>
 </tbody>
 </table>
+
 
 
 
@@ -553,6 +558,34 @@ $ python build_dataset_fed.py --dataset cifar10 \
         --seed 1
     ```
     
+  - FedNoRo
+  
+    ```bash
+    # under dir FedNoisy/
+    python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+        --model SimpleCNN \
+        --partition iid \
+        --num_clients 10 \
+        --globalize \
+        --noise_mode sym \
+        --noise_ratio 0.4 \
+        --data_dir ../fedNLLdata/mnist  \
+        --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+        --com_round 500 \
+        --epochs 5 \
+        --sample_ratio 1.0 \
+        --lr 0.01 \
+        --momentum 0.9 \
+        --weight_decay 5e-4 \
+        --fednoro \
+        --fednoro_opt sgd \
+        --fednoro_warmup 50 \
+        --fednoro_begin 50 \
+        --fednoro_end 250 \
+        --fednoro_a 0.8 \
+        --seed 1
+    ```
+    
     
 
 For more scripts, please check [scripts](./scripts/) folder.
@@ -572,7 +605,7 @@ For more scripts, please check [scripts](./scripts/) folder.
 
 ### FNLL baselines
 
-- [ ] Implement FedNoRo (working on...)
+- [x] Implement FedNoRo
 - [ ] Implement FedNed (working on...)
 - [ ] Implement FedCorr (a little bit complicated)
 

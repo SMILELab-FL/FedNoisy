@@ -5,6 +5,7 @@ import os
 import numpy as np
 from copy import deepcopy
 from typing import Dict, Tuple, List, Optional
+from collections import Counter
 
 from torch import nn
 from torch.utils.data import DataLoader
@@ -39,6 +40,7 @@ from fednoisy.utils import misc as misc
 from fednoisy.utils.criterion import get_robust_loss, mixup_criterion, loss_coteaching
 from fednoisy.utils.mixup import mixup_data
 from fednoisy.utils import dynamic_bootstrapping as dynboot
+from fednoisy.utils import fednoro as fednoro
 
 
 class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
@@ -119,7 +121,7 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
             self._LOGGER.info(
                 f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]"
             )
-            for imgs, labels, noisy_labels in train_loader:
+            for imgs, _, noisy_labels in train_loader:
                 if self.cuda:
                     imgs = imgs.cuda(self.device)
                     noisy_labels = noisy_labels.cuda(self.device)
@@ -131,14 +133,6 @@ class FedNLLFedAvgClientTrainer(SGDSerialClientTrainer):
                 self._model.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-
-            # TODO: for debug evaluation
-            loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = (
-                self.evaluate()
-            )
-            self._LOGGER.info(
-                f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}; local ImageNet top-1 test accuracy: {imagenet_acc1_*100:.2f}%, local ImageNet top-5 test accuracy: {imagenet_acc5_*100:.2f}%, local ImageNet test loss: {imagenet_loss_:.4f};"
-            )
 
         local_result = [self.model_parameters, data_size]
         return local_result
@@ -569,54 +563,146 @@ class FedNLLFedNoRoClientTrainer(FedNLLFedAvgClientTrainer):
             args,
         )
 
-    def train(self, model_parameters, train_loader):
+    def setup_optim(self, epochs, batch_size, lr, weight_decay, momentum):
+        self.epochs = epochs
+        self.lr = lr
+        self.batch_size = batch_size
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        if self.args.fednoro_opt == "sgd":
+            self.optimizer = torch.optim.SGD(
+                self._model.parameters(),
+                lr,
+                weight_decay=weight_decay,
+                momentum=momentum,
+            )
+        elif self.args.fednoro_opt == "adam":
+            self.optimizer = torch.optim.Adam(
+                self._model.parameters(),
+                lr=lr,
+                betas=(0.9, 0.999),
+                weight_decay=5e-4,
+            )
+        else:
+            raise ValueError(
+                f"args.fednoro_opt only support 'sgd' and 'adam', rather than '{self.args.fednoro_opt}'."
+            )
+
+        self.criterion = get_robust_loss(CLASS_NUM[self.args.dataset], self.args)
+
+    def local_process(self, payload, id_list, cur_round):
+        self.round = cur_round
+        self._LOGGER.info(f"Round {self.round} selected clients: {id_list}")
+        model_parameters = payload[0]
+        if self.args.fednoro_warmup <= cur_round:
+            weight_kd = self.args.fednoro_a * fednoro.get_current_consistency_weight(
+                cur_round, self.args.fednoro_begin, self.args.fednoro_end
+            )
+        else:
+            weight_kd = None
+        for cid in id_list:
+            self.cur_cid = cid
+            data_loader = self.dataset.get_dataloader(
+                cid=cid, train=True, batch_size=self.batch_size
+            )
+            # if cid in self.noisy_clients
+            if cur_round < self.args.fednoro_warmup:
+                pack = self.warmup_train(model_parameters, data_loader)
+            else:
+                if cid in self.noisy_clients:
+                    is_noisy_client = True
+                else:
+                    is_noisy_client = False
+
+                pack = self.train(
+                    model_parameters, data_loader, weight_kd, is_noisy_client
+                )
+
+            if self.args.dataset == "webvision":
+                loss_, acc_, imagenet_loss_, imagenet_acc1_, imagenet_acc5_ = (
+                    self.evaluate()
+                )
+                self._LOGGER.info(
+                    f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}; local ImageNet top-1 test accuracy: {imagenet_acc1_*100:.2f}%, local ImageNet top-5 test accuracy: {imagenet_acc5_*100:.2f}%, local ImageNet test loss: {imagenet_loss_:.4f};"
+                )
+            else:
+                loss_, acc_ = self.evaluate()
+                self._LOGGER.info(
+                    f"Round {self.round} client-{self.cur_cid} local test accuracy: {acc_*100:.2f}%, local test loss: {loss_:.4f}"
+                )
+            self.cache.append(pack)
+
+    def warmup_train(self, model_parameters, train_loader):
         self.set_model(model_parameters)
         self.setup_optim(
             self.epochs, self.batch_size, self.lr, self.weight_decay, self.momentum
         )
         self._model.train()
         data_size = len(train_loader.dataset)
+        class_num_list = np.array([0] * CLASS_NUM[self.args.dataset])
+        label_cnt = Counter(train_loader.dataset.noisy_labels)
+        # self._LOGGER.info(f"label_cnt: {label_cnt}")  # TODO: for debug
+        for cc in range(CLASS_NUM[self.args.dataset]):
+            class_num_list[cc] += label_cnt.get(cc, 0)
+        # self._LOGGER.info(f"class_num_list: {class_num_list}")  # TODO: for debug
 
-        for epoch in range(self.epochs):
-            self._LOGGER.info(
-                f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}]"
+        fednoro.train_LA(
+            model=self._model,
+            optimizer=self.optimizer,
+            train_loader=train_loader,
+            epochs=self.epochs,
+            class_num_list=class_num_list,
+            logger=self._LOGGER,
+            round=self.round,
+            cid=self.cur_cid,
+            device=self.device,
+        )
+
+        local_result = [self.model_parameters, data_size, self.cur_cid]
+        return local_result
+
+    def train(self, model_parameters, train_loader, weight_kd, is_noisy_client):
+        self.set_model(model_parameters)
+        self.setup_optim(
+            self.epochs, self.batch_size, self.lr, self.weight_decay, self.momentum
+        )
+        self._model.train()
+        data_size = len(train_loader.dataset)
+        class_num_list = np.array([0] * CLASS_NUM[self.args.dataset])
+        label_cnt = Counter(train_loader.dataset.noisy_labels)
+        # # self._LOGGER.info(f"label_cnt: {label_cnt}")  # TODO: for debug
+        for cc in range(CLASS_NUM[self.args.dataset]):
+            class_num_list[cc] += label_cnt.get(cc, 0)
+        # self._LOGGER.info(f"class_num_list: {class_num_list}")  # TODO: for debug
+
+        if is_noisy_client:
+            new_model_params = fednoro.train_FedNoRo(
+                student_model=deepcopy(self._model).to(self.device),
+                teacher_model=deepcopy(self._model).to(self.device),
+                train_loader=train_loader,
+                weight_kd=weight_kd,
+                epochs=self.epochs,
+                lr=self.lr,
+                args=self.args,
+                class_num_list=class_num_list,
+                logger=self._LOGGER,
+                round=self.round,
+                cid=self.cur_cid,
+                device=self.device,
             )
-            train_loss = 0
-            correct = 0
-            total = 0
-            batch_num = len(train_loader)
-            for batch_idx, (imgs, labels, noisy_labels) in enumerate(train_loader):
-                if self.cuda:
-                    imgs = imgs.cuda(self.device)
-                    noisy_labels = noisy_labels.cuda(self.device)
+        else:
+            fednoro.train_LA(
+                model=self._model,
+                optimizer=self.optimizer,
+                train_loader=train_loader,
+                epochs=self.epochs,
+                class_num_list=class_num_list,
+                logger=self._LOGGER,
+                round=self.round,
+                cid=self.cur_cid,
+                device=self.device,
+            )
+            new_model_params = self.model_parameters
 
-                imgs, targets_a, targets_b, lmbd = mixup_data(
-                    imgs, noisy_labels, self.args.mixup_alpha, self.device
-                )
-
-                outputs = self.model(imgs)
-                loss = mixup_criterion(
-                    self.criterion, outputs, targets_a, targets_b, lmbd
-                )
-
-                self.optimizer.zero_grad()
-                self._model.zero_grad()
-                loss.backward()
-                self.optimizer.step()
-
-                # with torch.no_grad():
-                #     train_loss += loss.detach()
-                #     _, pred = torch.max(outputs.data, 1)
-                #     total += noisy_labels.shape[0]
-                #     correct += (
-                #         lmbd * pred.eq(targets_a.data).cpu().sum().float()
-                #         + (1 - lmbd) * pred.eq(targets_b.data).cpu().sum().float()
-                #     )
-            # avg_train_loss = train_loss / batch_num
-            # train_acc = correct / total
-            # self._LOGGER.info(
-            #     f"Round {self.round} client-{self.cur_cid} local train epoch [{epoch}/{self.epochs}] train accuracy: {train_acc*100:.2f}%; local train loss: {avg_train_loss:.2f}"
-            # )
-
-        local_result = [self.model_parameters, data_size]
+        local_result = [new_model_params, data_size, self.cur_cid]
         return local_result
