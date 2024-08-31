@@ -1,0 +1,23 @@
+#!/bin/bash
+python fednoisy/algorithms/fedavg/main.py --dataset mnist \
+    --model SimpleCNN \
+    --partition iid \
+    --num_clients 10 \
+    --globalize \
+    --noise_mode sym \
+    --noise_ratio 0.4 \
+    --data_dir ../fedNLLdata/mnist  \
+    --out_dir ../Fed-Noisy-checkpoint/mnist/ \
+    --com_round 500 \
+    --epochs 5 \
+    --sample_ratio 1.0 \
+    --lr 0.01 \
+    --momentum 0.9 \
+    --weight_decay 5e-4 \
+    --fednoro \
+    --fednoro_opt sgd \
+    --fednoro_warmup 50 \
+    --fednoro_begin 50 \
+    --fednoro_end 250 \
+    --fednoro_a 0.8 \
+    --seed 1
